@@ -87,24 +87,23 @@ typedef enum
 
 class bit_file_c
 {
+	#define MAX_FILES 10000
+
     public:
-        bit_file_c(void);
-        bit_file_c(const char *fileName, const BF_MODES mode);
+        bit_file_c();
         virtual ~bit_file_c(void);
 		int m_totalBitCount;
+		int m_BitCounter[5];
         /* open/close bit file */
-        void Open(const char *fileName, const BF_MODES mode);
+        void Open(const char *fileName);
         void Close(void);
-
-        /* toss spare bits and byte align file */
-        int ByteAlign(void);
-
-        /* fill byte with ones or zeros and write out results */
-        int FlushOutput(const unsigned char onesFill);
-
+		void IncBitCounter(int count);
+		int GetBitCounter(int i);
+        
         /* get/put character */
         int GetChar(uint8_t *returnValue);
         int PutChar(const int c);
+		bool CreatePIDFile(int pid, const char *fileName);
 
         /* get/put single bit */
         int GetBit(void);
@@ -127,27 +126,32 @@ class bit_file_c
 
         /* status */
         bool eof(void);
-        bool good(void);
-        bool bad(void);
+        bool good(int pid_index);
+        bool bad(int pid_index);
+
+		int m_pidToSave[MAX_FILES];
+		std::ofstream *m_OutStream[MAX_FILES];    
+		std::ofstream *m_OutBitStream;     
+		void ResetBitCount(int i);
 
     private:
+	
 		char *pFileBuffer;
 		uint32_t m_fileReadIndex;
 		std::ifstream::pos_type m_filePos;
         std::ifstream *m_InStream;      /* input file stream pointer */
-        std::ofstream *m_OutStream;     /* output file stream pointer */
         endian_t m_endian;              /* endianess of architecture */
         char m_BitBuffer;               /* bits waiting to be read/written */
         unsigned char m_BitCount;       /* number of bits in bitBuffer */
         BF_MODES m_Mode;                /* open for read, write, or append */
-
-	
+		
         /* endianess aware methods used by GetBitsInt/PutBitsInt */
         
         int PutBitsLE(void *bits, const unsigned int count);
 		 
         int PutBitsBE(void *bits, const unsigned int count,
             const size_t size);
+		
 };
 
 #endif  /* ndef __BITFILE_H */

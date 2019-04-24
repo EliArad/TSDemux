@@ -99,49 +99,7 @@ typedef union
     unsigned long word;
     unsigned char bytes[sizeof(unsigned long)];
 } endian_test_t;
-
-/***************************************************************************
-*                                 METHODS
-***************************************************************************/
-
-/***************************************************************************
-*   Method     : bit_file_c - default constructor
-*   Description: This is the default bit_file_c constructor.  It
-*                initializes stream pointers to NULL and clears the bit
-*                buffer.
-*   Parameters : None
-*   Effects    : Initializes private members.
-*   Returned   : None
-***************************************************************************/
-bit_file_c::bit_file_c(void)
-{
-    m_InStream = NULL;
-    m_OutStream = NULL;
-    m_BitBuffer = 0;
-    m_BitCount = 0;
-    m_Mode = BF_NO_MODE;
-
-    /* test for endianess */
-    endian_test_t endianTest;
-
-    endianTest.word = 1;
-
-    if (endianTest.bytes[0] == 1)
-    {
-        /* LSB is 1st byte (little endian)*/
-        m_endian = BF_LITTLE_ENDIAN;
-    }
-    else if (endianTest.bytes[sizeof(unsigned long) - 1] == 1)
-    {
-        /* LSB is last byte (big endian)*/
-        m_endian = BF_BIG_ENDIAN;
-    }
-    else
-    {
-        m_endian = BF_UNKNOWN_ENDIAN;
-    }
-}
-
+ 
 /***************************************************************************
 *   Method     : bit_file_c - constructor
 *   Description: This is a bit_file_c constructor.  It opens an input or
@@ -156,90 +114,23 @@ bit_file_c::bit_file_c(void)
 *   Exception  : "Error: Invalid File Type" - for unknown mode
 *                "Error: Unable To Open File" - if stream cannot be opened
 ***************************************************************************/
-bit_file_c::bit_file_c(const char *fileName, const BF_MODES mode)
+bool bit_file_c::CreatePIDFile(int pid, const char *fileName)
 {
-    m_InStream = NULL;
-    m_OutStream = NULL;
-    m_BitBuffer = 0;
-    m_BitCount = 0;
+	if (m_pidToSave[pid] != -1)
+		return false;
 
-    switch (mode)
-    {
-        case BF_READ:
-            m_InStream = new ifstream(fileName, ios::in | ios::binary);
+	m_pidToSave[pid] = pid;
+	m_OutStream[pid] = new ofstream(fileName, ios::out | ios::binary);
 
-            if (!m_InStream->good())
-            {
-                delete m_InStream;
-                m_InStream = NULL;
-            }
-            else
-            {
-                m_Mode = mode;
-            }
-            break;
-
-        case BF_WRITE:
-            m_OutStream = new ofstream(fileName, ios::out | ios::binary);
-
-            if (!m_OutStream->good())
-            {
-                delete m_OutStream;
-                m_OutStream = NULL;
-            }
-            else
-            {
-                m_Mode = mode;
-            }
-            break;
-
-        case BF_APPEND:
-            m_OutStream =
-                new ofstream(fileName, ios::out | ios::binary | ios::app);
-
-            if (!m_OutStream->good())
-            {
-                delete m_OutStream;
-                m_OutStream = NULL;
-            }
-            else
-            {
-                m_Mode = mode;
-            }
-            break;
-
-        default:
-            throw("Error: Invalid File Type");
-            break;
-    }
-
-    /* make sure we opened a file */
-    if ((m_InStream == NULL) && (m_OutStream == NULL))
-    {
-        throw("Error: Unable To Open File");
-    }
-
-    /* test for endianess */
-    endian_test_t endianTest;
-
-    endianTest.word = 1;
-
-    if (endianTest.bytes[0] == 1)
-    {
-        /* LSB is 1st byte (little endian)*/
-        m_endian = BF_LITTLE_ENDIAN;
-    }
-    else if (endianTest.bytes[sizeof(unsigned long) - 1] == 1)
-    {
-        /* LSB is last byte (big endian)*/
-        m_endian = BF_BIG_ENDIAN;
-    }
-    else
-    {
-        m_endian = BF_UNKNOWN_ENDIAN;
-    }
+	if (!m_OutStream[pid]->good())
+	{
+		delete m_OutStream[pid];
+		m_OutStream[pid] = NULL;
+		return false;
+	}
+	return true;
 }
-
+ 
 /***************************************************************************
 *   Method     : ~bit_file_c - destructor
 *   Description: This is the bit_file_c destructor.  It closes and frees
@@ -261,18 +152,15 @@ bit_file_c::~bit_file_c(void)
         delete m_InStream;
     }
 
-    if (m_OutStream != NULL)
-    {
-        /* write out any unwritten bits */
-        if (m_BitCount != 0)
-        {
-            m_BitBuffer <<= (8 - m_BitCount);
-            m_OutStream->put(m_BitBuffer);
-        }
-
-        m_OutStream->close();
-        delete m_OutStream;
-    }
+	for (int i = 0; i < MAX_FILES; i++)
+	{
+		if (m_OutStream[i] != NULL)
+		{	
+			m_OutStream[i]->close();
+			delete m_OutStream[i];
+			m_pidToSave[i] = -1;
+		}
+	}
 }
 
 /***************************************************************************
@@ -288,81 +176,43 @@ bit_file_c::~bit_file_c(void)
 *                "Error: Invalid File Type" - for unknown mode
 *                "Error: Unable To Open File" - if stream cannot be opened
 ***************************************************************************/
-void bit_file_c::Open(const char *fileName, const BF_MODES mode)
+bit_file_c::bit_file_c()
+{
+	for (int i = 0; i < MAX_FILES; i++)
+	{
+		m_pidToSave[i] = -1;
+		m_OutStream[i] = NULL;
+	}
+}
+
+void bit_file_c::Open(const char *fileName)
 {
     /* make sure file isn't already open */
-    if ((m_InStream != NULL) || (m_OutStream != NULL))
+    if (m_InStream != NULL)
     {
         throw("Error: File Already Open");
     }
 
-    switch (mode)
-    {
-        case BF_READ:
-		{
-			m_InStream = new ifstream(fileName, ios::in | ios::binary);
-			m_InStream->seekg(0, ios::end);
-			ifstream::pos_type pos = m_InStream->tellg();
-			m_InStream->seekg(0, ios::beg);
-			pFileBuffer = new char[(uint32_t)pos];
-			m_InStream->read(pFileBuffer, (uint32_t)pos);
+	m_InStream = new ifstream(fileName, ios::in | ios::binary);
+	m_InStream->seekg(0, ios::end);
+	ifstream::pos_type pos = m_InStream->tellg();
+	m_InStream->seekg(0, ios::beg);
+	pFileBuffer = new char[(uint32_t)pos];
+	m_InStream->read(pFileBuffer, (uint32_t)pos);
 			 
-			if (!m_InStream->good())
-			{
-				delete m_InStream;
-				m_InStream = NULL;
-			}
-			else
-			{
-				m_Mode = mode;
-			}
-			m_InStream->close();
-			m_BitBuffer = 0;
-			m_BitCount = 0;
-			break;
-		}
-        case BF_WRITE:
-            m_OutStream = new ofstream(fileName, ios::out | ios::binary);
-
-            if (!m_OutStream->good())
-            {
-                delete m_OutStream;
-                m_OutStream = NULL;
-            }
-            else
-            {
-                m_Mode = mode;
-            }
-
-            m_BitBuffer = 0;
-            m_BitCount = 0;
-            break;
-
-        case BF_APPEND:
-            m_OutStream =
-                new ofstream(fileName, ios::out | ios::binary | ios::app);
-
-            if (!m_OutStream->good())
-            {
-                delete m_OutStream;
-                m_OutStream = NULL;
-            }
-            else
-            {
-                m_Mode = mode;
-            }
-
-            m_BitBuffer = 0;
-            m_BitCount = 0;
-            break;
-
-        default:
-            throw("Error: Invalid File Type");
-            break;
-    }
+	if (!m_InStream->good())
+	{
+		delete m_InStream;
+		m_InStream = NULL;
+		throw("Error: Unable To Open File");
+	}
+	 
+	m_InStream->close();
+	m_BitBuffer = 0;
+	m_BitCount = 0;
 
     /* make sure we opened a file */
-    if ((m_InStream == NULL) && (m_OutStream == NULL))
+    if (m_InStream == NULL)
     {
         throw("Error: Unable To Open File");
     }
@@ -391,116 +241,19 @@ void bit_file_c::Close(void)
         m_Mode = BF_NO_MODE;
     }
 
-    if (m_OutStream != NULL)
-    {
-        /* write out any unwritten bits */
-        if (m_BitCount != 0)
-        {
-            m_BitBuffer <<= (8 - m_BitCount);
-            m_OutStream->put(m_BitBuffer);
-        }
-
-        m_OutStream->close();
-        delete m_OutStream;
-
-        m_OutStream = NULL;
-        m_BitBuffer = 0;
-        m_BitCount = 0;
-        m_Mode = BF_NO_MODE;
-    }
-}
-
-/***************************************************************************
-*   Method     : ByteAlign
-*   Description: This method aligns the bitfile to the nearest byte.  For
-*                output files, this means writing out the bit buffer with
-*                extra bits set to 0.  For input files, this means flushing
-*                the bit buffer.
-*   Parameters : None
-*   Effects    : Flushes out the bit buffer.
-*   Returned   : EOF if stream is NULL or write fails.  Writes return the
-*                byte aligned contents of the bit buffer.  Reads returns
-*                the unaligned contents of the bit buffer.
-***************************************************************************/
-int bit_file_c::ByteAlign(void)
-{
-    int returnValue;
-
-    if ((BF_WRITE == m_Mode) || (BF_APPEND == m_Mode))
-    {
-        if (NULL == m_OutStream)
-        {
-            return(EOF);
-        }
-    }
-    else
-    {
-        if (NULL == m_InStream)
-        {
-            return(EOF);
-        }
-    }
-
-    returnValue = m_BitBuffer;
-
-    if ((BF_WRITE == m_Mode) || (BF_APPEND == m_Mode))
-    {
-        /* write out any unwritten bits */
-        if (m_BitCount != 0)
-        {
-            m_BitBuffer <<= 8 - (m_BitCount);
-            m_OutStream->put(m_BitBuffer);  /* check for error */
-        }
-    }
-
-    m_BitBuffer = 0;
-    m_BitCount = 0;
-
-    return (returnValue);
-}
-
-/***************************************************************************
-*   Method     : FlushOutput
-*   Description: This method flushes the output bit buffer.  This means
-*                left justifying any pending bits, and filling spare bits
-*                with the fill value.
-*   Parameters : onesFill - non-zero if spare bits are filled with ones
-*   Effects    : Flushes out the bit buffer, filling spare bits with ones
-*                or zeros.
-*   Returned   : EOF if stream is NULL or not writeable.  Otherwise, the
-*                bit buffer value written. -1 if no data was written.
-***************************************************************************/
-int bit_file_c::FlushOutput(const unsigned char onesFill)
-{
-    int returnValue;
-
-    if (NULL == m_OutStream)
-    {
-        return(EOF);
-    }
-
-    returnValue = -1;
-
-    /* write out any unwritten bits */
-    if (m_BitCount != 0)
-    {
-        m_BitBuffer <<= (8 - m_BitCount);
-
-        if (onesFill)
-        {
-            m_BitBuffer |= (0xFF >> m_BitCount);
-        }
-
-        m_OutStream->put(m_BitBuffer);      /* check for error */
-        returnValue = m_BitBuffer;
-    }
-
-    m_BitBuffer = 0;
-    m_BitCount = 0;
-
-    return (returnValue);
-}
-
+	for (int i = 0; i < MAX_FILES; i++)
+	{
+		if (m_OutStream[i] != NULL)
+		{
+			m_OutStream[i]->close();
+			delete m_OutStream[i];
+			m_OutStream[i] = NULL;
+			m_BitBuffer = 0;
+			m_BitCount = 0;
+		}
+	}
+} 
+ 
 /***************************************************************************
 *   Method     : GetChar
 *   Description: This method returns the next byte from the input stream.
@@ -527,7 +280,7 @@ int bit_file_c::GetChar(uint8_t *returnValue)
 
     if (m_BitCount == 0)
     {
-		m_totalBitCount += 8;
+		IncBitCounter(8);
         /* we can just get byte from file */
         return 1;
     }
@@ -540,7 +293,7 @@ int bit_file_c::GetChar(uint8_t *returnValue)
     m_BitBuffer = (char)*returnValue;
 
     *returnValue = tmp & 0xFF;
-	m_totalBitCount += 8;
+	IncBitCounter(8);
     return 1;
 
 }
@@ -557,7 +310,7 @@ int bit_file_c::PutChar(const int c)
 {
     int tmp;
 
-    if (m_OutStream == NULL)
+    if (m_OutBitStream == NULL)
     {
         return EOF;
     }
@@ -565,7 +318,7 @@ int bit_file_c::PutChar(const int c)
     if (m_BitCount == 0)
     {
         /* we can just put byte from file */
-        m_OutStream->put(c);
+		m_OutBitStream->put(c);
         return c;
     }
 
@@ -573,7 +326,7 @@ int bit_file_c::PutChar(const int c)
     tmp = (c & 0xFF) >> m_BitCount;
     tmp = tmp | ((m_BitBuffer) << (8 - m_BitCount));
 
-    m_OutStream->put((char)tmp);    /* check for error */
+	m_OutBitStream->put((char)tmp);    /* check for error */
 
     /* put remaining in buffer. count shouldn't change. */
     m_BitBuffer = (char)c;
@@ -610,7 +363,7 @@ int bit_file_c::GetBit(void)
     /* bit to return is msb in buffer */
     m_BitCount--;
     returnValue = m_BitBuffer >> m_BitCount;
-	m_totalBitCount += 1;
+	IncBitCounter(1);
     return (returnValue & 0x01);
 }
 
@@ -714,7 +467,7 @@ int bit_file_c::PutBit(const int c)
     /* write bit buffer if we have 8 bits */
     if (m_BitCount == 8)
     {
-        m_OutStream->put(m_BitBuffer);    /* check for error */
+		m_OutBitStream->put(m_BitBuffer);    /* check for error */
 
         /* reset buffer */
         m_BitCount = 0;
@@ -767,7 +520,7 @@ int bit_file_c::GetBits(uint16_t *bits, const unsigned int count)
 		if (remaining > 0)
 			*bits = *bits << 1;				 
 	}
-	m_totalBitCount += count;
+	IncBitCounter(count);
     return count;
 }
 
@@ -801,7 +554,7 @@ int bit_file_c::GetBits(uint8_t *bits, const unsigned int count)
 		if (remaining > 0)
 			*bits = *bits << 1;
 	}
-	m_totalBitCount += count;
+	IncBitCounter(count);
 	return count;
 }
 
@@ -809,9 +562,18 @@ int bit_file_c::GetBitCount()
 {
 	return m_totalBitCount;
 }
+int bit_file_c::GetBitCounter(int i)
+{
+	return m_BitCounter[i];
+}
+
 void bit_file_c::ResetBitCount()
 {
 	m_totalBitCount = 0;
+}
+void bit_file_c::ResetBitCount(int i)
+{
+	m_BitCounter[i] = 0;
 }
 
 int bit_file_c::GetBits(uint64_t *bits, const unsigned int count)
@@ -845,7 +607,7 @@ int bit_file_c::GetBits(uint64_t *bits, const unsigned int count)
 			*bits = *bits << 1;
 	}
 
-	m_totalBitCount += count;
+	IncBitCounter(count);
 	return count;
 }
 
@@ -881,8 +643,18 @@ int bit_file_c::GetBits(uint32_t *bits, const unsigned int count)
 		if (remaining > 0)
 			*bits = *bits << 1;
 	}
-	m_totalBitCount += count;
+
+	IncBitCounter(count);
 	return count;
+}
+
+void bit_file_c::IncBitCounter(int count)
+{
+	m_totalBitCount += count;
+	for (int i = 0; i < 4; i++)
+	{
+		m_BitCounter[i] += count;
+	}
 }
 
 /***************************************************************************
@@ -1134,12 +906,7 @@ bool bit_file_c::eof(void)
     {
         return (m_InStream->eof());
     }
-
-    if (m_OutStream != NULL)
-    {
-        return (m_OutStream->eof());
-    }
-
+	 
     /* return false for no file */
     return false;
 }
@@ -1152,16 +919,16 @@ bool bit_file_c::eof(void)
 *   Returned   : Returns good for the opened file stream.  False is
 *                returned if there is no open file stream.
 ***************************************************************************/
-bool bit_file_c::good(void)
+bool bit_file_c::good(int pid_index)
 {
     if (m_InStream != NULL)
     {
         return (m_InStream->good());
     }
 
-    if (m_OutStream != NULL)
+    if (m_OutStream[pid_index] != NULL)
     {
-        return (m_OutStream->good());
+        return (m_OutStream[pid_index]->good());
     }
 
     /* return false for no file */
@@ -1176,7 +943,7 @@ bool bit_file_c::good(void)
 *   Returned   : Returns bad for the opened file stream.  False is
 *                returned if there is no open file stream.
 ***************************************************************************/
-bool bit_file_c::bad(void)
+bool bit_file_c::bad(int pid_index)
 {
     if (m_InStream != NULL)
     {
@@ -1185,7 +952,7 @@ bool bit_file_c::bad(void)
 
     if (m_OutStream != NULL)
     {
-        return (m_OutStream->bad());
+        return (m_OutStream[pid_index]->bad());
     }
 
     /* return false for no file */

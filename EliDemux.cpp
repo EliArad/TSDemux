@@ -12,6 +12,8 @@ int main()
     std::cout << "Hello World!\n"; 
 
 	TSDemux t;
+	t.CreatePIDFile(258, "c:\\klv.bin");
+	t.CreatePIDFile(256, "c:\\video.h264");
 	t.Start("d:\\truck.ts");
 
 }

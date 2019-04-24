@@ -14,6 +14,10 @@ TSDemux::~TSDemux()
 {
 }
 
+bool TSDemux::CreatePIDFile(int pid, const char *fileName)
+{
+	return bf.CreatePIDFile(pid, fileName);
+}
 void TSDemux::ReadInput(const char *fileName)
 {
 	 
@@ -50,14 +54,16 @@ void TSDemux::ReadInput(const char *fileName)
 
 #endif 
 
-	bf.Open(fileName, BF_READ);
+	bf.Open(fileName);
 
 }
 
 void TSDemux::adaptation_field() 
 {
 	int N = 0;
+
 	bf.GetBits(&m_tsp.Adp.adaptation_field_length, 8);
+	bf.ResetBitCount(0);
 	if (m_tsp.Adp.adaptation_field_length > 0)
 	{
 		m_tsp.Adp.discontinuity_indicator = bf.GetBit();
@@ -128,6 +134,7 @@ void TSDemux::adaptation_field()
 				bf.GetBits(&m_tsp.Adp.reserved, 8);
 			}
 		}
+		N = m_tsp.Adp.adaptation_field_length - bf.GetBitCounter(0) / 8;
 		for (int i = 0; i < N; i++)
 		{
 			bf.GetBits(&m_tsp.Adp.stuffing_byte, 8);
@@ -161,22 +168,33 @@ int TSDemux::transport_packet()
 	{
 		adaptation_field();
 	}
+	int bc = bf.GetBitCount();
+	N = 188 - bc / 8;
+	uint8_t temp;
 	if (m_tsp.ts.adaptation_field_control == 1 || m_tsp.ts.adaptation_field_control == 3)
 	{
 		for (int i = 0; i < N; i++) 
 		{
-			//data_byte 8 bslbf
+			if (bf.GetChar(&temp) == -1)
+			{
+				printf("EOF\n");
+				return -1;
+			}
+			if (bf.m_pidToSave[m_tsp.ts.PID] != -1)
+			{
+				bf.m_OutStream[m_tsp.ts.PID]->put(temp);
+			}
 		}
-	}
-	int bc = bf.GetBitCount();
-	N = 188 -  bc / 8;
-	uint8_t temp;
-	for (int i = 0 ; i < N ; i++)
+	} 
+	else
 	{
-		if (bf.GetChar(&temp) == -1)
+		for (int i = 0; i < N; i++)
 		{
-			printf("EOF\n");
-			return -1;
+			if (bf.GetChar(&temp) == -1)
+			{
+				printf("EOF\n");
+				return -1;
+			}
 		}
 	}
 	return 1;
