@@ -7,8 +7,13 @@ TSDemux::TSDemux()
 {
 
 	m_tsp.ts.packetNumber = 0;
+	m_showPCR = false;
 }
 
+void TSDemux::PrintConfig(bool showPCR)
+{
+	m_showPCR = showPCR;
+}
 
 TSDemux::~TSDemux()
 {
@@ -80,7 +85,7 @@ void TSDemux::adaptation_field()
 			bf.GetBits(&m_tsp.Adp.reserved, 6);
 			bf.GetBits(&m_tsp.Adp.program_clock_reference_extension, 9);
 			m_tsp.Adp.PCR = ((double)m_tsp.Adp.program_clock_reference_base * 300.0 + m_tsp.Adp.program_clock_reference_extension) / 27000.0;
-			printf("PCR = %f\n", m_tsp.Adp.PCR);
+			if (m_showPCR == true) printf("PCR = %f\n", m_tsp.Adp.PCR);
 		}
 		if (m_tsp.Adp.OPCR_flag == 1) 
 		{
@@ -212,6 +217,19 @@ void TSDemux::Start(const char *fileName)
   		 
 	} while (true);
 	 
+}
+
+void TSDemux::Start(uint8_t *buffer, uint32_t size)
+{
+	bf.SetBuffer(buffer, size);
+ 
+	do
+	{
+		if (transport_packet() == 0)
+			break;
+
+	} while (true);
+
 }
 
 

@@ -142,7 +142,7 @@ bool bit_file_c::CreatePIDFile(int pid, const char *fileName)
 ***************************************************************************/
 bit_file_c::~bit_file_c(void)
 {
-	if (pFileBuffer != NULL)
+	if (pFileBuffer != NULL && m_externalBuffer == false)
 	{
 		delete pFileBuffer;
 		pFileBuffer = NULL;
@@ -178,6 +178,7 @@ bit_file_c::~bit_file_c(void)
 ***************************************************************************/
 bit_file_c::bit_file_c()
 {
+	m_externalBuffer = false;
 	for (int i = 0; i < MAX_FILES; i++)
 	{
 		m_pidToSave[i] = -1;
@@ -197,9 +198,9 @@ void bit_file_c::Open(const char *fileName)
 	m_InStream->seekg(0, ios::end);
 	ifstream::pos_type pos = m_InStream->tellg();
 	m_InStream->seekg(0, ios::beg);
-	pFileBuffer = new char[(uint32_t)pos];
-	m_InStream->read(pFileBuffer, (uint32_t)pos);
-			 
+	pFileBuffer = new uint8_t[(uint32_t)pos];
+	m_InStream->read((char *)pFileBuffer, (uint32_t)pos);
+	
 	if (!m_InStream->good())
 	{
 		delete m_InStream;
@@ -210,12 +211,23 @@ void bit_file_c::Open(const char *fileName)
 	m_InStream->close();
 	m_BitBuffer = 0;
 	m_BitCount = 0;
-
+	m_filePos = pos;
     /* make sure we opened a file */
     if (m_InStream == NULL)
     {
         throw("Error: Unable To Open File");
     }
+}
+
+void bit_file_c::SetBuffer(uint8_t *p, uint32_t size)
+{	 
+	m_externalBuffer = true;
+	pFileBuffer = p;
+	m_filePos = size;
+	m_BitBuffer = 0;
+	m_BitCount = 0;
+
+	 
 }
 
 /***************************************************************************
@@ -266,15 +278,8 @@ int bit_file_c::GetChar(uint8_t *returnValue)
 {
     int tmp;
 
-    if (m_InStream == NULL)
-    {
-        return EOF;
-    }
-
-    if (m_InStream->eof())
-    {
-        return EOF;
-    }
+	if (m_fileReadIndex >= m_filePos)
+		return EOF;
 
     *returnValue = pFileBuffer[m_fileReadIndex++];
 
@@ -347,10 +352,8 @@ int bit_file_c::GetBit(void)
 {
     int returnValue;
 
-    if (m_InStream == NULL)
-    {
-        return EOF;
-    }
+	if (m_fileReadIndex >= m_filePos)
+		return EOF;
 
     if (m_BitCount == 0)
     {
@@ -371,10 +374,8 @@ int bit_file_c::_GetBit(void)
 {
 	int returnValue;
 
-	if (m_InStream == NULL)
-	{
+	if (m_fileReadIndex >= m_filePos)
 		return EOF;
-	}
 
 	if (m_BitCount == 0)
 	{
@@ -496,10 +497,8 @@ int bit_file_c::GetBits(uint16_t *bits, const unsigned int count)
     int remaining, returnValue;
 	*bits = 0;
 
-    if ((m_InStream == NULL) || (bits == NULL))
-    {
-        return EOF;
-    }
+	if (m_fileReadIndex >= m_filePos)
+		return EOF;
  
     remaining = count;
 
@@ -530,10 +529,8 @@ int bit_file_c::GetBits(uint8_t *bits, const unsigned int count)
 	int remaining, returnValue;
 	*bits = 0;
 
-	if ((m_InStream == NULL) || (bits == NULL))
-	{
+	if (m_fileReadIndex >= m_filePos)
 		return EOF;
-	}
 
 	remaining = count;
 
@@ -582,10 +579,8 @@ int bit_file_c::GetBits(uint64_t *bits, const unsigned int count)
 	int remaining, returnValue;
 	*bits = 0;
 
-	if ((m_InStream == NULL) || (bits == NULL))
-	{
+	if (m_fileReadIndex >= m_filePos)
 		return EOF;
-	}
 
 	remaining = count;
 
@@ -617,10 +612,8 @@ int bit_file_c::GetBits(uint32_t *bits, const unsigned int count)
 	int remaining, returnValue;
 	*bits = 0;
 
-	if ((m_InStream == NULL) || (bits == NULL))
-	{
+	if (m_fileReadIndex >= m_filePos)
 		return EOF;
-	}
 
 	remaining = count;
 

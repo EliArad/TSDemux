@@ -14,7 +14,24 @@ int main()
 	TSDemux t;
 	t.CreatePIDFile(258, "c:\\klv.bin");
 	t.CreatePIDFile(256, "c:\\video.h264");
-	t.Start("d:\\truck.ts");
+	//t.Start("d:\\truck.ts");
+	
+	std::ifstream *m_InStream;      
+	
+
+	m_InStream = new ifstream("d:\\truck.ts", ios::in | ios::binary);
+	m_InStream->seekg(0, ios::end);
+	ifstream::pos_type pos = m_InStream->tellg();
+	m_InStream->seekg(0, ios::beg);
+	uint8_t *pFileBuffer = new uint8_t[(uint32_t)pos];
+	m_InStream->read((char *)pFileBuffer, (uint32_t)pos);
+	m_InStream->close();
+
+	t.Start(pFileBuffer, (uint32_t)pos);
+
+	delete pFileBuffer;
+
+
 
 }
 

@@ -19,10 +19,11 @@ public:
 	~TSDemux();
 
 	void Start(const char *fileName);
+	void Start(uint8_t *buffer, uint32_t size);
 	bool CreatePIDFile(int pid, const char *fileName);
 
-
-
+	void PrintConfig(bool showPCR);
+  
 private:
 	void ReadInput(const char *fileName);
 	int transport_packet();
@@ -33,5 +34,6 @@ private:
 	bit_file_c bf;
 
 	TSPacket  m_tsp;
+	bool m_showPCR;
 };
 

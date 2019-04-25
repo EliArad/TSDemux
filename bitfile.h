@@ -96,6 +96,7 @@ class bit_file_c
 		int m_BitCounter[5];
         /* open/close bit file */
         void Open(const char *fileName);
+		void SetBuffer(uint8_t *p,  uint32_t size);
         void Close(void);
 		void IncBitCounter(int count);
 		int GetBitCounter(int i);
@@ -135,8 +136,8 @@ class bit_file_c
 		void ResetBitCount(int i);
 
     private:
-	
-		char *pFileBuffer;
+		bool m_externalBuffer;
+		uint8_t *pFileBuffer;
 		uint32_t m_fileReadIndex;
 		std::ifstream::pos_type m_filePos;
         std::ifstream *m_InStream;      /* input file stream pointer */
