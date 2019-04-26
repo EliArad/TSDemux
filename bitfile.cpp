@@ -179,6 +179,8 @@ bit_file_c::~bit_file_c(void)
 bit_file_c::bit_file_c()
 {
 	m_externalBuffer = false;
+	m_InStream = nullptr;
+	pFileBuffer = nullptr;
 	for (int i = 0; i < MAX_FILES; i++)
 	{
 		m_pidToSave[i] = -1;
@@ -226,8 +228,14 @@ void bit_file_c::SetBuffer(uint8_t *p, uint32_t size)
 	m_filePos = size;
 	m_BitBuffer = 0;
 	m_BitCount = 0;
+  
+}
 
-	 
+void bit_file_c::SetExternalBuffer()
+{
+	m_externalBuffer = true;
+	m_BitBuffer = 0;
+	m_BitCount = 0;
 }
 
 /***************************************************************************

@@ -84,6 +84,66 @@ bool CFifo::Pop(uint8_t *data, uint32_t size)
 	LeaveCriticalSection(&cs);
 	return true;
 }
+
+// pop all data
+
+bool CFifo::Pop(uint8_t *data)
+{
+	EnterCriticalSection(&cs);
+
+	int size = GetFifoSize();
+	if (size == 0)
+		return false;
+	LeaveCriticalSection(&cs);
+
+	if ((m_rd + size) < m_fifoSize)
+	{
+		memcpy(data, m_fifoBuffer + m_rd, size);
+		m_rd += size;
+	}
+	else
+	{
+		int c = m_fifoSize - m_rd;
+		memcpy(data, m_fifoBuffer + m_rd, c);
+		size -= c;
+		memcpy(data + c, m_fifoBuffer, size);
+		m_rd = c;
+	}
+	LeaveCriticalSection(&cs);
+	return true;
+}
+
+bool CFifo::PopTS(uint8_t *data, int *packets)
+{
+	EnterCriticalSection(&cs);
+
+	int size = GetFifoSize();
+	if (size == 0)
+		return false;
+	
+	*packets = size / 188;
+
+	size = (*packets) * 188;
+
+	LeaveCriticalSection(&cs);
+
+	if ((m_rd + size) < m_fifoSize)
+	{
+		memcpy(data, m_fifoBuffer + m_rd, size);
+		m_rd += size;
+	}
+	else
+	{
+		int c = m_fifoSize - m_rd;
+		memcpy(data, m_fifoBuffer + m_rd, c);
+		size -= c;
+		memcpy(data + c, m_fifoBuffer, size);
+		m_rd = c;
+	}
+	LeaveCriticalSection(&cs);
+	return true;
+}
+
 uint32_t CFifo::GetFifoSize()
 {
 	if (m_wr == m_rd)

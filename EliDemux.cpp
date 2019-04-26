@@ -27,7 +27,12 @@ int main()
 	m_InStream->read((char *)pFileBuffer, (uint32_t)pos);
 	m_InStream->close();
 
-	t.Start(pFileBuffer, (uint32_t)pos);
+	//t.Start(pFileBuffer, (uint32_t)pos);
+
+	t.InitTSWorker();
+	t.WaitWorker();
+	Sleep(1000);
+	t.StopWorker();
 
 	delete pFileBuffer;
 

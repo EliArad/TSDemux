@@ -133,6 +133,11 @@ class bit_file_c
 		std::ofstream *m_OutStream[MAX_FILES];    
 		std::ofstream *m_OutBitStream;     
 		void ResetBitCount(int i);
+		void SetExternalBuffer();
+		uint8_t *GetBuffer()
+		{
+			return pFileBuffer;
+		}
 
     private:
 		bool m_externalBuffer;

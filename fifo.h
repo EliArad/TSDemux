@@ -11,9 +11,9 @@ public:
 	~CFifo();
 	void Create(int size);
 	bool Push(const uint8_t *data, uint32_t size);
-	bool Pop(uint8_t *data, uint32_t size);
-	
-
+	bool Pop(uint8_t *data, uint32_t size);	
+	bool Pop(uint8_t *data);
+	bool PopTS(uint8_t *data, int *packets);
 private:
 	uint32_t GetFifoFreeSize();
 	uint32_t GetFifoSize();

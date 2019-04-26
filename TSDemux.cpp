@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TSDemux.h"
+#include <chrono>
 
 
 
@@ -7,7 +8,7 @@ TSDemux::TSDemux()
 {
 
 	m_tsp.ts.packetNumber = 0;
-	m_showPCR = false;
+	m_showPCR = false;	
 }
 
 void TSDemux::PrintConfig(bool showPCR)
@@ -237,13 +238,52 @@ void TSDemux::SetBuffer(uint8_t *buffer, uint32_t size)
 	bf.SetBuffer(buffer, size);
 }
 
-void TSDemux::Process(uint8_t *buffer, uint32_t size)
-{ 
+void TSDemux::InitTSWorker()
+{
+	bf.SetExternalBuffer();
+	fifo.Create(1024 * 1024 * 10);
+	m_tsworker = true;
+	//pthread = make_shared<thread>(&TSDemux::Process, TSDemux());
+	pthread = std::make_shared<std::thread>(std::bind(&TSDemux::Process, this));
+
+}
+
+void TSDemux::PushData(uint8_t *buffer, uint32_t size)
+{
+	fifo.Push(buffer, size);
+}
+void TSDemux::WaitWorker()
+{
+
+}
+void TSDemux::StopWorker()
+{
+	m_tsworker = false;
+	if (pthread != nullptr)
+		pthread->join();
+	pthread = nullptr;
+
+}
+void TSDemux::Process()
+{ 	
 	
-	if (transport_packet() == 0)
+	int packets;
+	while (m_tsworker)
 	{
-	
-	}	 
+		if (fifo.PopTS(bf.GetBuffer(), &packets) == false)
+		{
+			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			continue;
+		}
+
+		for (int i = 0; i < packets; i++)
+		{
+			if (transport_packet() == 0)
+			{
+
+			}
+		}
+	}
 }
 
 
