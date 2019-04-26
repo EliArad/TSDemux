@@ -11,6 +11,7 @@
 
 #include "asyncio.h"
 #include "asyncrdr.h"
+#include "D:\projects\TSDemux\EliDemux\EliDemux\tsdemux.h"
 
 #pragma warning(disable:4710)  // 'function' not inlined (optimization)
 #include "asyncflt.h"
@@ -61,9 +62,12 @@ int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);
 // (in this case they only call through to default implementations).
 //
 ////////////////////////////////////////////////////////////////////////
+ 
 
 STDAPI DllRegisterServer()
 {
+
+	 
     return AMovieDllRegisterServer2(TRUE);
 }
 
@@ -96,6 +100,7 @@ CUnknown * WINAPI CAsyncFilter::CreateInstance(LPUNKNOWN pUnk, HRESULT *phr)
     return new CAsyncFilter(pUnk, phr);
 }
 
+TSDemux t;
 
 BOOL CAsyncFilter::ReadTheFile(LPCTSTR lpszFileName)
 {
@@ -151,6 +156,9 @@ BOOL CAsyncFilter::ReadTheFile(LPCTSTR lpszFileName)
     // Save a pointer to the data that was read from the file
     m_pbData = pbMem;
 	m_llSize = (LONGLONG)minSize;
+	
+	t.CreatePIDFile(258, "c:\\klv1.bin");
+ 
 
     // Close the file
     CloseHandle(hFile);

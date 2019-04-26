@@ -9,6 +9,7 @@
 
 #include <streams.h>
 #include "asyncio.h"
+#include "D:\projects\TSDemux\EliDemux\EliDemux\tsdemux.h"
 
 // --- CAsyncRequest ---
 
@@ -279,6 +280,7 @@ CAsyncIo::WaitForNext(
     }
 }
 
+extern TSDemux t;
 
 // perform a synchronous read request on this thread.
 // Need to hold m_csFile while doing this (done in request object)
@@ -301,6 +303,8 @@ CAsyncIo::SyncReadAligned(
 
     CAsyncRequest request;
 
+	
+
     HRESULT hr = request.Request(this,
                                 m_pStream,
                                 llPos,
@@ -311,6 +315,8 @@ CAsyncIo::SyncReadAligned(
                                 0);
     if(FAILED(hr))
         return hr;
+
+	t.Process(pBuffer, lLength);
 
     hr = request.Complete();
 

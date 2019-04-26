@@ -66,7 +66,7 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <stdint.h>
 /***************************************************************************
 *                            TYPE DEFINITIONS
 ***************************************************************************/
@@ -95,12 +95,11 @@ class bit_file_c
 		int m_totalBitCount;
 		int m_BitCounter[5];
         /* open/close bit file */
-        void Open(const char *fileName);
-		void SetBuffer(uint8_t *p,  uint32_t size);
+        void Open(const char *fileName);		
         void Close(void);
 		void IncBitCounter(int count);
 		int GetBitCounter(int i);
-        
+		void SetBuffer(uint8_t *buffer, uint32_t size);
         /* get/put character */
         int GetChar(uint8_t *returnValue);
         int PutChar(const int c);

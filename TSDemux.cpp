@@ -232,4 +232,18 @@ void TSDemux::Start(uint8_t *buffer, uint32_t size)
 
 }
 
+void TSDemux::SetBuffer(uint8_t *buffer, uint32_t size)
+{
+	bf.SetBuffer(buffer, size);
+}
+
+void TSDemux::Process(uint8_t *buffer, uint32_t size)
+{ 
+	
+	if (transport_packet() == 0)
+	{
+	
+	}	 
+}
+
 

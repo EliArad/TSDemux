@@ -21,7 +21,8 @@ public:
 	void Start(const char *fileName);
 	void Start(uint8_t *buffer, uint32_t size);
 	bool CreatePIDFile(int pid, const char *fileName);
-
+	void SetBuffer(uint8_t *p, uint32_t size);
+	void Process(uint8_t *buffer, uint32_t size);
 	void PrintConfig(bool showPCR);
   
 private:
