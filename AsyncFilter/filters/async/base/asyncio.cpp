@@ -316,7 +316,7 @@ CAsyncIo::SyncReadAligned(
     if(FAILED(hr))
         return hr;
 
-	t.Process(pBuffer, lLength);
+	 
 
     hr = request.Complete();
 

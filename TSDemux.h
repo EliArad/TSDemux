@@ -7,6 +7,7 @@
 #include "TSPacket.h"
 #include "fifo.h"
 #include <thread>
+#include <memory>
 using namespace std;
 
 #define SYNC_BYTE 0x47
@@ -37,7 +38,7 @@ private:
 
 private:
 	bit_file_c bf;
-	std::shared_ptr<thread> pthread;
+	shared_ptr<thread> pthread;
 	bool m_tsworker;
 	TSPacket  m_tsp;
 	bool m_showPCR;

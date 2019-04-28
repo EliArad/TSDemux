@@ -30,6 +30,9 @@
     <ClCompile Include="..\..\..\TSDemux.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\fifo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Filter\asyncflt.def">
@@ -53,6 +56,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\TSPacket.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\fifo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

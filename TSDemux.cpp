@@ -275,7 +275,7 @@ void TSDemux::Process()
 	{
 		if (fifo.PopTS(bf.GetBuffer(), maxPacketSize, &packets) == false)
 		{
-			std::this_thread::sleep_for(std::chrono::microseconds(1000));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			continue;
 		}
 

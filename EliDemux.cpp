@@ -57,7 +57,7 @@ int main()
 
 
 	// work from worker thread where the buffer is filled into a fifo
-	t.InitTSWorker(1, 188 * 1010);
+	t.InitTSWorker(100, 188 * 1010);
 	
 	thread t1(Process);
 	t.WaitWorker();

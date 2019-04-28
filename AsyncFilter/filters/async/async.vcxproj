@@ -186,6 +186,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\bitfile.cpp" />
+    <ClCompile Include="..\..\..\fifo.cpp" />
     <ClCompile Include="..\..\..\TSDemux.cpp" />
     <ClCompile Include="Base\asyncio.cpp" />
     <ClCompile Include="Base\asyncrdr.cpp" />
@@ -196,6 +197,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\bitfile.h" />
+    <ClInclude Include="..\..\..\fifo.h" />
     <ClInclude Include="..\..\..\TSDemux.h" />
     <ClInclude Include="..\..\..\TSPacket.h" />
     <ClInclude Include="Filter\asyncflt.h" />
