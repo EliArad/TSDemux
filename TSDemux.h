@@ -24,7 +24,7 @@ public:
 	bool CreatePIDFile(int pid, const char *fileName);
 	void SetBuffer(uint8_t *p, uint32_t size);
 	void Process();
-	void PushData(uint8_t *buffer, uint32_t size);
+	bool PushData(uint8_t *buffer, uint32_t size);
 	void PrintConfig(bool showPCR);
 	void InitTSWorker(int packets, uint32_t fifoSize);
 	void WaitWorker();

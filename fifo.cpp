@@ -39,9 +39,8 @@ bool CFifo::Push(const uint8_t *data, uint32_t size)
 	// Request ownership of the critical section.
 	EnterCriticalSection(&cs);
 
-	int fsize = GetFifoFreeSize();
-	size = min(fsize, size);
-	if (size == 0)
+	int fsize = GetFifoFreeSize();	
+	if (size > fsize)
 	{
 		LeaveCriticalSection(&cs);
 		return false;
@@ -51,15 +50,17 @@ bool CFifo::Push(const uint8_t *data, uint32_t size)
 	{
 		memcpy(m_fifoBuffer + m_wr, data, size);
 		m_wr = (m_wr + size) % m_fifoSize;
+		//printf("m_wr = %d\n", m_wr);
 		m_fifoFullnessSize += size;
 	}
 	else 
 	{
 		int c = m_fifoSize - m_wr;
 		memcpy(m_fifoBuffer + m_wr, data, c);
+		m_wr = (m_wr + c) % m_fifoSize;
 		size -= c;
 		memcpy(m_fifoBuffer , data + c, size);
-		m_wr = c;
+		m_wr = (m_wr + size) % m_fifoSize;
 		m_fifoFullnessSize += size;
 	}
 	LeaveCriticalSection(&cs);
@@ -139,21 +140,27 @@ bool CFifo::PopTS(uint8_t *data, int maxPacketSize ,int *packets)
 	*packets = min(*packets, maxPacketSize);
 
 	size = (*packets) * 188;
-  
+	if (size == 0)
+	{
+		LeaveCriticalSection(&cs);
+		return false;
+	}
 
 	if ((m_rd + size) <= m_fifoSize)
 	{
 		memcpy(data, m_fifoBuffer + m_rd, size);
 		m_rd = (m_rd + size) % m_fifoSize;
+		//printf("m_rd = %d\n", m_rd);
 		m_fifoFullnessSize -= size;
 	}
 	else
 	{
 		int c = m_fifoSize - m_rd;
 		memcpy(data, m_fifoBuffer + m_rd, c);
+		m_rd = (m_rd + c) % m_fifoSize;
 		size -= c;
 		memcpy(data + c, m_fifoBuffer, size);
-		m_rd = c;
+		m_rd = (m_rd + size) % m_fifoSize;
 		m_fifoFullnessSize -= size;
 	}
 	LeaveCriticalSection(&cs);
@@ -163,16 +170,7 @@ bool CFifo::PopTS(uint8_t *data, int maxPacketSize ,int *packets)
 uint32_t CFifo::GetFifoSize()
 {
 	return m_fifoFullnessSize;
-	if (m_wr == m_rd)
-	{
-		return 0;
-	}
-	if (m_wr > m_rd)
-	{
-		return m_wr - m_rd;
-	}
-
-	return (m_fifoSize - m_rd) + m_wr;
+	 
 }
 
 uint32_t CFifo::GetFifoFreeSize()

@@ -187,7 +187,7 @@ int TSDemux::transport_packet()
 		}
 		if (bf.m_pidToSave[m_tsp.ts.PID] != -1)
 		{
-			bf.m_OutStream[m_tsp.ts.PID]->write((char*)&buffer, sizeof(uint8_t));
+			bf.m_OutStream[m_tsp.ts.PID]->write((char*)&buffer, N);
 		}		
 	} 
 	else
@@ -248,9 +248,9 @@ void TSDemux::InitTSWorker(int packets, uint32_t fifoSize)
 
 }
 
-void TSDemux::PushData(uint8_t *buffer, uint32_t size)
+bool TSDemux::PushData(uint8_t *buffer, uint32_t size)
 {
-	fifo.Push(buffer, size);
+	return fifo.Push(buffer, size);
 }
 void TSDemux::WaitWorker()
 {
@@ -283,7 +283,7 @@ void TSDemux::Process()
 		{
 			if (transport_packet() == 0)
 			{
-
+				return;
 			}
 		}
 	}

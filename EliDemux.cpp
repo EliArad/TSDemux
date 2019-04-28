@@ -14,12 +14,17 @@ uint8_t *pFileBuffer;
 void Process()
 {
 	int i = 0;
-	int chunkSize = 188;
+	int chunkSize = 400;
 	while (pos > 0)
 	{
-		t.PushData(pFileBuffer + i, chunkSize);
+		if (t.PushData(pFileBuffer + i, chunkSize) == false)
+		{
+			Sleep(1);
+			continue;
+		}
 		i += chunkSize;
 		pos -= chunkSize;
+		Sleep(0);
 	}
 }
 
@@ -29,10 +34,14 @@ int main()
 
 	
 	t.CreatePIDFile(258, "c:\\klv.bin");
-	t.CreatePIDFile(256, "c:\\video.h264");
-	//t.Start("d:\\truck.ts");
-	
-	   
+	//t.CreatePIDFile(256, "c:\\video.h264");
+	t.PrintConfig(true);
+
+#if 0 // working from file 
+	t.Start("d:\\truck.ts");
+#endif 
+
+#if 1  // working from external buffer 
 	
 
 	m_InStream = new ifstream("d:\\truck.ts", ios::in | ios::binary);
@@ -43,17 +52,20 @@ int main()
 	m_InStream->read((char *)pFileBuffer, (uint32_t)pos);
 	m_InStream->close();
 	  
-	//t.Start(pFileBuffer, (uint32_t)pos);
+	//t.Start(pFileBuffer, (uint32_t)pos);  another option to work from complete external buffer 
 	t.PrintConfig(true);
 
-	t.InitTSWorker(1, 188 * 2);
+
+	// work from worker thread where the buffer is filled into a fifo
+	t.InitTSWorker(1, 188 * 1010);
 	
 	thread t1(Process);
 	t.WaitWorker();
-	Sleep(14000);
+	Sleep(24000);
 	t.StopWorker();
 
 	delete pFileBuffer;
+#endif 
 	 
 }
 

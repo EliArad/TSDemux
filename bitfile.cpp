@@ -324,10 +324,8 @@ bool bit_file_c::GetTSBuffer(uint8_t *buffer, int size)
 	}
 
 	memcpy(buffer , pFileBuffer + m_fileReadIndex , size);
-	m_fileReadIndex += size;
-	 
+	m_fileReadIndex += size;	 
 	return 1;
-
 }
 
 /***************************************************************************
@@ -668,8 +666,11 @@ int bit_file_c::GetBits(uint32_t *bits, const unsigned int count)
 		if (m_BitCount == 0)
 		{
 			/* buffer is empty, read another character */
-			if (m_fileReadIndex >= m_filePos)
-				return EOF;
+			if (m_externalBuffer == false)
+			{
+				if (m_fileReadIndex >= m_filePos)
+					return EOF;
+			}
 			returnValue = pFileBuffer[m_fileReadIndex++];
 			m_BitCount = 8;
 			m_BitBuffer = returnValue;			
