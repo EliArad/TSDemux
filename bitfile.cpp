@@ -100,20 +100,7 @@ typedef union
     unsigned char bytes[sizeof(unsigned long)];
 } endian_test_t;
  
-/***************************************************************************
-*   Method     : bit_file_c - constructor
-*   Description: This is a bit_file_c constructor.  It opens an input or
-*                output stream and clears the bit buffer.  An exception
-*                will be thrown on error.
-*   Parameters : fileName - NULL terminated string containing the name of
-*                           the file to be opened.
-*                mode - The mode of the file to be opened
-*   Effects    : Initializes private members.  Creates and opens an input
-*                or output stream.
-*   Returned   : None
-*   Exception  : "Error: Invalid File Type" - for unknown mode
-*                "Error: Unable To Open File" - if stream cannot be opened
-***************************************************************************/
+ 
 bool bit_file_c::CreatePIDFile(int pid, const char *fileName)
 {
 	if (m_pidToSave[pid] != -1)
@@ -164,20 +151,11 @@ bit_file_c::~bit_file_c(void)
 }
 
 /***************************************************************************
-*   Method     : Open
-*   Description: This method opens an input or output stream and initializes
-*                the bit buffer.  An exception will be thrown on error.
-*   Parameters : fileName - NULL terminated string containing the name of
-*                           the file to be opened.
-*                mode - The mode of the file to be opened
-*   Effects    : Creates and opens an input or output stream.
-*   Returned   : None
-*   Exception  : "Error: File Already Open" - if object has an open file
-*                "Error: Invalid File Type" - for unknown mode
-*                "Error: Unable To Open File" - if stream cannot be opened
+*   Constructor
 ***************************************************************************/
 bit_file_c::bit_file_c()
 {
+	m_externalBufferPacketsSize = 0;
 	m_externalBuffer = false;
 	m_InStream = nullptr;
 	pFileBuffer = nullptr;
@@ -230,10 +208,13 @@ void bit_file_c::SetBuffer(uint8_t *p, uint32_t size)
 	m_BitCount = 0;
   
 }
-
-void bit_file_c::SetExternalBuffer()
+ 
+void bit_file_c::SetExternalBuffer(int packets)
 {
 	m_externalBuffer = true;
+	if (pFileBuffer == nullptr)
+		pFileBuffer = new uint8_t[packets * 188];
+	m_externalBufferPacketsSize = packets;
 	m_BitBuffer = 0;
 	m_BitCount = 0;
 }
@@ -274,6 +255,16 @@ void bit_file_c::Close(void)
 	}
 } 
  
+bool bit_file_c::MoveAhead(uint8_t size)
+{
+	if (m_BitCount > 0 && m_BitCount < 8)
+		return false;
+
+	m_fileReadIndex += size;
+	IncBitCounter(8 * size);
+	return true;
+
+}
 /***************************************************************************
 *   Method     : GetChar
 *   Description: This method returns the next byte from the input stream.
@@ -286,8 +277,11 @@ int bit_file_c::GetChar(uint8_t *returnValue)
 {
     int tmp;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
 
     *returnValue = pFileBuffer[m_fileReadIndex++];
 
@@ -308,6 +302,31 @@ int bit_file_c::GetChar(uint8_t *returnValue)
     *returnValue = tmp & 0xFF;
 	IncBitCounter(8);
     return 1;
+
+}
+
+bool bit_file_c::GetTSBuffer(uint8_t *buffer, int size)
+{
+	int tmp;
+
+	if (m_BitCount != 0)
+		return false;
+
+	if (m_externalBuffer == false)
+	{
+		uint8_t temp;
+		for (int i = 0; i < size; i++)
+		{
+			GetChar(&temp);
+			buffer[i] = temp;
+		}
+		return true;
+	}
+
+	memcpy(buffer , pFileBuffer + m_fileReadIndex , size);
+	m_fileReadIndex += size;
+	 
+	return 1;
 
 }
 
@@ -360,8 +379,11 @@ int bit_file_c::GetBit(void)
 {
     int returnValue;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
 
     if (m_BitCount == 0)
     {
@@ -382,8 +404,11 @@ int bit_file_c::_GetBit(void)
 {
 	int returnValue;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
 
 	if (m_BitCount == 0)
 	{
@@ -505,8 +530,11 @@ int bit_file_c::GetBits(uint16_t *bits, const unsigned int count)
     int remaining, returnValue;
 	*bits = 0;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
  
     remaining = count;
 
@@ -537,8 +565,11 @@ int bit_file_c::GetBits(uint8_t *bits, const unsigned int count)
 	int remaining, returnValue;
 	*bits = 0;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
 
 	remaining = count;
 
@@ -587,8 +618,11 @@ int bit_file_c::GetBits(uint64_t *bits, const unsigned int count)
 	int remaining, returnValue;
 	*bits = 0;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
 
 	remaining = count;
 
@@ -620,8 +654,11 @@ int bit_file_c::GetBits(uint32_t *bits, const unsigned int count)
 	int remaining, returnValue;
 	*bits = 0;
 
-	if (m_fileReadIndex >= m_filePos)
-		return EOF;
+	if (m_externalBuffer == false)
+	{
+		if (m_fileReadIndex >= m_filePos)
+			return EOF;
+	}
 
 	remaining = count;
 

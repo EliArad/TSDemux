@@ -26,7 +26,7 @@ public:
 	void Process();
 	void PushData(uint8_t *buffer, uint32_t size);
 	void PrintConfig(bool showPCR);
-	void InitTSWorker();
+	void InitTSWorker(int packets, uint32_t fifoSize);
 	void WaitWorker();
 	void StopWorker();
 private:

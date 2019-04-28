@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
+#include <algorithm>
 
 CFifo::CFifo()
 {
@@ -20,6 +21,7 @@ void CFifo::Create(int size)
 {
 	m_fifoBuffer = new uint8_t[size];
 	m_fifoSize = size;
+	m_fifoFullnessSize = 0;
 
 }
 CFifo::~CFifo()
@@ -37,14 +39,19 @@ bool CFifo::Push(const uint8_t *data, uint32_t size)
 	// Request ownership of the critical section.
 	EnterCriticalSection(&cs);
 
-	while (GetFifoFreeSize() < size)
+	int fsize = GetFifoFreeSize();
+	size = min(fsize, size);
+	if (size == 0)
 	{
-
+		LeaveCriticalSection(&cs);
+		return false;
 	}
-	if ((m_wr + size) < m_fifoSize)
+
+	if ((m_wr + size) <= m_fifoSize)
 	{
 		memcpy(m_fifoBuffer + m_wr, data, size);
-		m_wr += size;
+		m_wr = (m_wr + size) % m_fifoSize;
+		m_fifoFullnessSize += size;
 	}
 	else 
 	{
@@ -53,6 +60,7 @@ bool CFifo::Push(const uint8_t *data, uint32_t size)
 		size -= c;
 		memcpy(m_fifoBuffer , data + c, size);
 		m_wr = c;
+		m_fifoFullnessSize += size;
 	}
 	LeaveCriticalSection(&cs);
 	return true;
@@ -93,8 +101,11 @@ bool CFifo::Pop(uint8_t *data)
 
 	int size = GetFifoSize();
 	if (size == 0)
+	{
+		LeaveCriticalSection(&cs);
 		return false;
-	LeaveCriticalSection(&cs);
+	}
+
 
 	if ((m_rd + size) < m_fifoSize)
 	{
@@ -113,24 +124,28 @@ bool CFifo::Pop(uint8_t *data)
 	return true;
 }
 
-bool CFifo::PopTS(uint8_t *data, int *packets)
+bool CFifo::PopTS(uint8_t *data, int maxPacketSize ,int *packets)
 {
 	EnterCriticalSection(&cs);
 
 	int size = GetFifoSize();
 	if (size == 0)
+	{
+		LeaveCriticalSection(&cs);
 		return false;
+	}
 	
 	*packets = size / 188;
+	*packets = min(*packets, maxPacketSize);
 
 	size = (*packets) * 188;
+  
 
-	LeaveCriticalSection(&cs);
-
-	if ((m_rd + size) < m_fifoSize)
+	if ((m_rd + size) <= m_fifoSize)
 	{
 		memcpy(data, m_fifoBuffer + m_rd, size);
-		m_rd += size;
+		m_rd = (m_rd + size) % m_fifoSize;
+		m_fifoFullnessSize -= size;
 	}
 	else
 	{
@@ -139,6 +154,7 @@ bool CFifo::PopTS(uint8_t *data, int *packets)
 		size -= c;
 		memcpy(data + c, m_fifoBuffer, size);
 		m_rd = c;
+		m_fifoFullnessSize -= size;
 	}
 	LeaveCriticalSection(&cs);
 	return true;
@@ -146,6 +162,7 @@ bool CFifo::PopTS(uint8_t *data, int *packets)
 
 uint32_t CFifo::GetFifoSize()
 {
+	return m_fifoFullnessSize;
 	if (m_wr == m_rd)
 	{
 		return 0;
@@ -160,15 +177,16 @@ uint32_t CFifo::GetFifoSize()
 
 uint32_t CFifo::GetFifoFreeSize()
 {
+	return m_fifoSize - m_fifoFullnessSize;
+
 	if (m_wr == m_rd)
 	{
 		return m_fifoSize;
 	}
 	if (m_wr > m_rd)
 	{
-		return m_fifoSize - m_wr - m_rd;
-	}
-
-	return m_fifoSize - ((m_fifoSize - m_rd) + m_wr);
+		return m_fifoSize - (m_wr - m_rd);
+	} 
+	return ((m_fifoSize - m_rd) + m_wr);
 }
 

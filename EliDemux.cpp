@@ -6,38 +6,57 @@
 #include "TSDemux.h"
 
 // the ts pdf https://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
+std::ifstream *m_InStream;
+ifstream::pos_type pos;
+TSDemux t;
+uint8_t *pFileBuffer; 
+
+void Process()
+{
+	int i = 0;
+	int chunkSize = 188;
+	while (pos > 0)
+	{
+		t.PushData(pFileBuffer + i, chunkSize);
+		i += chunkSize;
+		pos -= chunkSize;
+	}
+}
 
 int main()
 {
     std::cout << "Hello World!\n"; 
 
-	TSDemux t;
+	
 	t.CreatePIDFile(258, "c:\\klv.bin");
 	t.CreatePIDFile(256, "c:\\video.h264");
 	//t.Start("d:\\truck.ts");
 	
-	std::ifstream *m_InStream;      
+	   
 	
 
 	m_InStream = new ifstream("d:\\truck.ts", ios::in | ios::binary);
 	m_InStream->seekg(0, ios::end);
-	ifstream::pos_type pos = m_InStream->tellg();
+	pos = m_InStream->tellg();
 	m_InStream->seekg(0, ios::beg);
-	uint8_t *pFileBuffer = new uint8_t[(uint32_t)pos];
+	pFileBuffer = new uint8_t[(uint32_t)pos];
 	m_InStream->read((char *)pFileBuffer, (uint32_t)pos);
 	m_InStream->close();
-
+	  
 	//t.Start(pFileBuffer, (uint32_t)pos);
+	t.PrintConfig(true);
 
-	t.InitTSWorker();
+	t.InitTSWorker(1, 188 * 2);
+	
+	thread t1(Process);
 	t.WaitWorker();
-	Sleep(1000);
+	Sleep(14000);
 	t.StopWorker();
 
 	delete pFileBuffer;
-
-
-
+	 
 }
+
+
 
  

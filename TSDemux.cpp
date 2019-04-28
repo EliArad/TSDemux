@@ -177,23 +177,23 @@ int TSDemux::transport_packet()
 	int bc = bf.GetBitCount();
 	N = 188 - bc / 8;
 	uint8_t temp;
+	uint8_t buffer[188];
 	if (m_tsp.ts.adaptation_field_control == 1 || m_tsp.ts.adaptation_field_control == 3)
 	{
-		for (int i = 0; i < N; i++) 
+		if (bf.GetTSBuffer(buffer, N) == false)
 		{
-			if (bf.GetChar(&temp) == -1)
-			{
-				printf("EOF\n");
-				return -1;
-			}
-			if (bf.m_pidToSave[m_tsp.ts.PID] != -1)
-			{
-				bf.m_OutStream[m_tsp.ts.PID]->put(temp);
-			}
+			printf("EOF\n");
+			return -1;
 		}
+		if (bf.m_pidToSave[m_tsp.ts.PID] != -1)
+		{
+			bf.m_OutStream[m_tsp.ts.PID]->write((char*)&buffer, sizeof(uint8_t));
+		}		
 	} 
 	else
 	{
+		bf.MoveAhead(N);
+		#if 0 
 		for (int i = 0; i < N; i++)
 		{
 			if (bf.GetChar(&temp) == -1)
@@ -202,6 +202,7 @@ int TSDemux::transport_packet()
 				return -1;
 			}
 		}
+		#endif 
 	}
 	return 1;
 		  
@@ -238,12 +239,11 @@ void TSDemux::SetBuffer(uint8_t *buffer, uint32_t size)
 	bf.SetBuffer(buffer, size);
 }
 
-void TSDemux::InitTSWorker()
+void TSDemux::InitTSWorker(int packets, uint32_t fifoSize)
 {
-	bf.SetExternalBuffer();
-	fifo.Create(1024 * 1024 * 10);
+	bf.SetExternalBuffer(packets);
+	fifo.Create(fifoSize);
 	m_tsworker = true;
-	//pthread = make_shared<thread>(&TSDemux::Process, TSDemux());
 	pthread = std::make_shared<std::thread>(std::bind(&TSDemux::Process, this));
 
 }
@@ -254,7 +254,8 @@ void TSDemux::PushData(uint8_t *buffer, uint32_t size)
 }
 void TSDemux::WaitWorker()
 {
-
+	if (pthread != nullptr)
+		pthread->join();
 }
 void TSDemux::StopWorker()
 {
@@ -268,11 +269,13 @@ void TSDemux::Process()
 { 	
 	
 	int packets;
+	int maxPacketSize = bf.GetPacketSize();
+	 
 	while (m_tsworker)
 	{
-		if (fifo.PopTS(bf.GetBuffer(), &packets) == false)
+		if (fifo.PopTS(bf.GetBuffer(), maxPacketSize, &packets) == false)
 		{
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			std::this_thread::sleep_for(std::chrono::microseconds(1000));
 			continue;
 		}
 

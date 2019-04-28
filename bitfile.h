@@ -123,7 +123,8 @@ class bit_file_c
 		int _GetBit(void);
         int PutBitsInt(void *bits, const unsigned int count,
             const size_t size);
-
+		bool MoveAhead(uint8_t size);
+		bool GetTSBuffer(uint8_t *buffer, int size);
         /* status */
         bool eof(void);
         bool good(int pid_index);
@@ -133,13 +134,20 @@ class bit_file_c
 		std::ofstream *m_OutStream[MAX_FILES];    
 		std::ofstream *m_OutBitStream;     
 		void ResetBitCount(int i);
-		void SetExternalBuffer();
+		void SetExternalBuffer(int packets);
 		uint8_t *GetBuffer()
 		{
+			m_fileReadIndex = 0;
 			return pFileBuffer;
 		}
 
+		uint32_t GetPacketSize()
+		{
+			return m_externalBufferPacketsSize;
+		}
+
     private:
+		uint32_t m_externalBufferPacketsSize;
 		bool m_externalBuffer;
 		uint8_t *pFileBuffer;
 		uint32_t m_fileReadIndex;
