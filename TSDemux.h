@@ -30,19 +30,28 @@ public:
 	void InitTSWorker(int packets, uint32_t fifoSize);
 	void WaitWorker();
 	void StopWorker();
+	void Streaming(bool streamIt, char *strAddr, int port);
+	 
+
 private:
 	void ReadInput(const char *fileName);
 	int transport_packet();
 	void adaptation_field();	
+	void StreamingWaitPCR();
+	bool InitUDPServer(char *strAddr, int port);
+
 
 
 private:
+	char m_serverIpAddress[100];
+	double lastPcr;
+	bool m_streaming;
 	bit_file_c bf;
 	shared_ptr<thread> pthread;
 	bool m_tsworker;
 	TSPacket  m_tsp;
 	bool m_showPCR;
-
+	SOCKET m_server;
 	CFifo fifo;
 };
 

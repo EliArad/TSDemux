@@ -1,14 +1,28 @@
 #include "pch.h"
 #include "TSDemux.h"
 #include <chrono>
+#include <stdio.h>
+#include <sys\timeb.h>
+ 
+#pragma comment(lib,"ws2_32.lib") //Winsock Library
 
 
-
-TSDemux::TSDemux()
+TSDemux::TSDemux() : m_streaming(false) , m_server(-1)
 {
 
 	m_tsp.ts.packetNumber = 0;
 	m_showPCR = false;	
+}
+
+void TSDemux::Streaming(bool streamIt, char *ipAddress, int port)
+{
+	m_streaming = streamIt;
+
+	if (streamIt == true)
+	{
+		strcpy(m_serverIpAddress, ipAddress);
+		InitUDPServer(m_serverIpAddress, port);
+	}
 }
 
 void TSDemux::PrintConfig(bool showPCR)
@@ -18,6 +32,11 @@ void TSDemux::PrintConfig(bool showPCR)
 
 TSDemux::~TSDemux()
 {
+	if (m_server != -1)
+	{
+		closesocket(m_server);
+		m_server = -1;
+	}
 }
 
 bool TSDemux::CreatePIDFile(int pid, const char *fileName)
@@ -207,16 +226,77 @@ int TSDemux::transport_packet()
 	return 1;
 		  
 }
+
+struct timeb start;
+void TakeTimeStart()
+{ 
+	int i = 0;
+	ftime(&start);
+}
+
+int diffTime()
+{
+	struct timeb end;
+	int diff;
+	ftime(&end);
+	diff = (int)(1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
+
+	//printf("\nOperation took %u milliseconds\n", diff);
+	return diff;
+}
+
+void TSDemux::StreamingWaitPCR()
+{
+	if (lastPcr == 0)
+	{
+		lastPcr = m_tsp.Adp.PCR;
+		return;
+	}
+
+	double pcrDiff = m_tsp.Adp.PCR - lastPcr;
+	if (pcrDiff > 0)
+	{
+		int diff = diffTime();
+		while (diff < pcrDiff)
+		{
+			Sleep(1);
+			diff = diffTime();
+			//printf(".");
+		}
+		//printf("\n");
+		TakeTimeStart();
+
+
+	}
+	lastPcr = m_tsp.Adp.PCR;
+}
+void ShowCurrentTime()
+{
+	time_t mytime = time(NULL);
+	char * time_str = ctime(&mytime);
+	time_str[strlen(time_str) - 1] = '\0';
+	printf("Current Time : %s\n", time_str);
+}
 void TSDemux::Start(const char *fileName)
 {
-	  
+	lastPcr = 0;
 	ReadInput(fileName);
+	TakeTimeStart();
+	ShowCurrentTime();
+	
 
 	do 
 	{
 		if (transport_packet() == 0)
+		{
+			ShowCurrentTime();
 			break;
-  		 
+		}
+
+		if (m_streaming)
+		{
+			StreamingWaitPCR();			
+		}  		 
 	} while (true);
 	 
 }
@@ -289,4 +369,41 @@ void TSDemux::Process()
 	}
 }
 
+bool TSDemux::InitUDPServer(char *strAddr, int port)
+{
+
+	
+	struct sockaddr_in server, si_other;
+	int slen, recv_len;
+	 
+	WSADATA wsa;
+
+	slen = sizeof(si_other);
+
+ 
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+	{
+		return false;
+	}
+ 
+	//Create a socket
+	if ((m_server = ::socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET)
+	{
+		return false;
+	}
+
+	//Prepare the sockaddr_in structure
+	server.sin_family = AF_INET;	
+	DWORD ip = inet_addr(strAddr);
+	server.sin_addr.s_addr = ip;
+	server.sin_port = htons(port);
+
+	//Bind
+	if (::bind(m_server, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+	{
+		return false;
+	}
+
+	return true;
+}
 

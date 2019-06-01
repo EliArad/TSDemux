@@ -7,7 +7,6 @@
 //------------------------------------------------------------------------------
 
 #include <strsafe.h>
-
  
 // {5265AF27-CF87-4595-A65C-59FCA509BE3C}
 DEFINE_GUID(CLSID_AsyncSample,
@@ -129,7 +128,15 @@ public:
 
     static CUnknown * WINAPI CreateInstance(LPUNKNOWN, HRESULT *);
 
+
     DECLARE_IUNKNOWN
+
+
+	// Open and close the file as necessary
+	STDMETHODIMP Run(REFERENCE_TIME tStart);
+	STDMETHODIMP Pause();
+	STDMETHODIMP Stop();
+	 
 
     STDMETHODIMP NonDelegatingQueryInterface(REFIID riid, void **ppv)
     {

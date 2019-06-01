@@ -15,6 +15,7 @@
 
 #pragma warning(disable:4710)  // 'function' not inlined (optimization)
 #include "asyncflt.h"
+#include "common.h"
 
 //
 // Setup data for filter registration
@@ -54,6 +55,9 @@ CFactoryTemplate g_Templates[1] = {
 };
 
 int g_cTemplates = sizeof(g_Templates) / sizeof(g_Templates[0]);
+ 
+GRAPH_STAT  m_graphStat = STOP;
+
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -158,7 +162,9 @@ BOOL CAsyncFilter::ReadTheFile(LPCTSTR lpszFileName)
 	m_llSize = (LONGLONG)minSize;
 	
 	t.CreatePIDFile(258, "c:\\klv1.bin");
- 
+	t.PrintConfig(true);
+	t.InitTSWorker(50000, 188 * 50000);
+
 
     // Close the file
     CloseHandle(hFile);
@@ -166,3 +172,47 @@ BOOL CAsyncFilter::ReadTheFile(LPCTSTR lpszFileName)
     return TRUE;
 }
 
+
+
+//
+// Stop
+//
+// Overriden to close the dump file
+//
+STDMETHODIMP CAsyncFilter::Stop()
+{
+	CAutoLock cObjectLock(m_pLock);
+	m_graphStat = STOP;
+
+	return CBaseFilter::Stop();
+}
+
+
+//
+// Pause
+//
+// Overriden to open the dump file
+//
+STDMETHODIMP CAsyncFilter::Pause()
+{
+	CAutoLock cObjectLock(m_pLock);
+
+	m_graphStat = PAUSE;
+
+	return CBaseFilter::Pause();
+}
+
+
+//
+// Run
+//
+// Overriden to open the dump file
+//
+STDMETHODIMP CAsyncFilter::Run(REFERENCE_TIME tStart)
+{
+	CAutoLock cObjectLock(m_pLock);
+	m_graphStat = RUN;
+
+	 
+	return CBaseFilter::Run(tStart);
+}

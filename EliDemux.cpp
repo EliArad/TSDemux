@@ -33,15 +33,16 @@ int main()
     std::cout << "Hello World!\n"; 
 
 	
-	t.CreatePIDFile(258, "c:\\klv.bin");
+	//t.CreatePIDFile(258, "c:\\klv.bin");
 	//t.CreatePIDFile(256, "c:\\video.h264");
 	t.PrintConfig(true);
+	t.Streaming(true, (char *)"127.0.0.1", 6000);
 
-#if 0 // working from file 
+#if 1 // working from file 
 	t.Start("d:\\truck.ts");
 #endif 
 
-#if 1  // working from external buffer 
+#if 0  // working from external buffer 
 	
 
 	m_InStream = new ifstream("d:\\truck.ts", ios::in | ios::binary);

@@ -9,6 +9,7 @@
 
 #include <streams.h>
 #include "asyncio.h"
+#include "common.h"
 #include "D:\projects\TSDemux\EliDemux\EliDemux\tsdemux.h"
 
 // --- CAsyncRequest ---
@@ -44,6 +45,8 @@ CAsyncRequest::Request(
 
     return S_OK;
 }
+
+extern GRAPH_STAT  m_graphStat;
 
 
 // issue the i/o if not overlapped, and block until i/o complete.
@@ -317,14 +320,19 @@ CAsyncIo::SyncReadAligned(
         return hr;
 
 	 
-
     hr = request.Complete();
+	if (m_graphStat == RUN)
+	{
+		while (t.PushData(pBuffer, lLength) == false)
+		{
+			Sleep(1);
+		}
+	}
 
     // return actual data length
     *pcbActual = request.GetActualLength();
     return hr;
 }
-
 
 HRESULT
 CAsyncIo::Length(LONGLONG *pllTotal, LONGLONG *pllAvailable)
