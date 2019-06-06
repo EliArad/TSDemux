@@ -7,7 +7,9 @@
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
 
 
-TSDemux::TSDemux() : m_streaming(false) , m_server(-1)
+TSDemux::TSDemux() : m_streaming(false) , 
+					 m_server(-1),
+					 m_loop(false)
 {
 
 	m_tsp.ts.packetNumber = 0;
@@ -19,9 +21,11 @@ void TSDemux::Streaming(bool streamIt, char *ipAddress, int port)
 	m_streaming = streamIt;
 
 	if (streamIt == true)
-	{
+	{		
 		strcpy(m_serverIpAddress, ipAddress);
 		InitUDPServer(m_serverIpAddress, port);
+	
+		
 	}
 }
 
@@ -283,20 +287,43 @@ void TSDemux::Start(const char *fileName)
 	ReadInput(fileName);
 	TakeTimeStart();
 	ShowCurrentTime();
-	
+	char sendBuf[188 * 7];
+	int  sendIndex = 0;
 
 	do 
 	{
+		bf.SaveFilePointerStart();
 		if (transport_packet() == 0)
 		{
 			ShowCurrentTime();
-			break;
+			if (m_loop == true)
+			{
+				bf.Close();
+				bf.Open(fileName);
+				continue;
+			}
+			else 
+			{
+				break;
+			}
 		}
 
 		if (m_streaming)
 		{
-			StreamingWaitPCR();			
+			StreamingWaitPCR();
+			uint32_t size;
+			uint32_t fileStartPointer, fileCurPointer;
+			bf.GetFilePtrIndex(&size, &fileStartPointer, &fileCurPointer);
+			bf.GetFileData(fileStartPointer, size, sendBuf + sendIndex);
+			sendIndex++;
+			if (sendIndex == 7)
+			{
+				SendData(sendBuf, 1316);
+				sendIndex = 0;
+			}
+			//printf("%d\n", size);
 		}  		 
+		
 	} while (true);
 	 
 }
@@ -345,6 +372,38 @@ void TSDemux::StopWorker()
 	pthread = nullptr;
 
 }
+#include <sys/types.h>
+ 
+
+struct sockaddr src_addr;
+int fromlen;
+
+void TSDemux::ServerNagtation()
+{
+	m_serverRunning = true;
+	m_receiveFrom = false;
+	char buf[110];
+	
+	while (m_serverRunning)
+	{
+		if (m_server == -1)
+		{
+			Sleep(1000);
+			continue;
+		}
+		int res = recvfrom(m_server, buf, 10, 0 , &src_addr, &fromlen);
+		if (res == -1)
+		{
+			int x = WSAGetLastError();
+			printf("error in send %d\n", x);
+			continue;
+		}
+		if (memcmp(buf , "Eli Arad", strlen("Eli Arad")) == 0)
+			m_receiveFrom = true;
+		memset(buf, 0, sizeof(buf));
+	}
+
+}
 void TSDemux::Process()
 { 	
 	
@@ -367,6 +426,21 @@ void TSDemux::Process()
 			}
 		}
 	}
+}
+
+bool TSDemux::SendData(const char *buf , int size)
+{
+	if (m_receiveFrom == false)
+		return false;
+
+	if (::sendto(m_server, buf, size, 0, &src_addr, fromlen) == SOCKET_ERROR)
+	{
+		int x = WSAGetLastError();
+		printf("error in send %d\n", x);
+		return false;
+	}
+	return true;
+
 }
 
 bool TSDemux::InitUDPServer(char *strAddr, int port)
@@ -403,6 +477,8 @@ bool TSDemux::InitUDPServer(char *strAddr, int port)
 	{
 		return false;
 	}
+
+	pserverThread = std::make_shared<std::thread>(std::bind(&TSDemux::ServerNagtation, this));
 
 	return true;
 }

@@ -37,6 +37,7 @@ int main()
 	//t.CreatePIDFile(256, "c:\\video.h264");
 	t.PrintConfig(true);
 	t.Streaming(true, (char *)"127.0.0.1", 6000);
+	t.Loop(true);
 
 #if 1 // working from file 
 	t.Start("d:\\truck.ts");

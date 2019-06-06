@@ -165,7 +165,6 @@ bit_file_c::bit_file_c()
 		m_OutStream[i] = NULL;
 	}
 }
-
 void bit_file_c::Open(const char *fileName)
 {
     /* make sure file isn't already open */
@@ -173,7 +172,7 @@ void bit_file_c::Open(const char *fileName)
     {
         throw("Error: File Already Open");
     }
-
+	m_fileReadIndex = 0;
 	m_InStream = new ifstream(fileName, ios::in | ios::binary);
 	m_InStream->seekg(0, ios::end);
 	ifstream::pos_type pos = m_InStream->tellg();
@@ -265,6 +264,23 @@ bool bit_file_c::MoveAhead(uint8_t size)
 	return true;
 
 }
+
+void bit_file_c::GetFilePtrIndex(uint32_t *size, uint32_t *fileStartPointer , uint32_t *fileCurPointer)
+{
+	*size = m_fileReadIndex - m_filePtrStart;
+	*fileStartPointer = m_filePtrStart;
+	*fileCurPointer = m_fileReadIndex;
+}
+void bit_file_c::GetFileData(uint32_t fileStartPointer, uint32_t size, char *buffer)
+{
+	memcpy(buffer, pFileBuffer + fileStartPointer, size);
+}
+
+void bit_file_c::SaveFilePointerStart()
+{
+	m_filePtrStart = m_fileReadIndex;
+}
+
 /***************************************************************************
 *   Method     : GetChar
 *   Description: This method returns the next byte from the input stream.
@@ -282,7 +298,7 @@ int bit_file_c::GetChar(uint8_t *returnValue)
 		if (m_fileReadIndex >= m_filePos)
 			return EOF;
 	}
-
+	
     *returnValue = pFileBuffer[m_fileReadIndex++];
 
     if (m_BitCount == 0)

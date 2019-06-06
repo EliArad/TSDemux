@@ -31,7 +31,10 @@ public:
 	void WaitWorker();
 	void StopWorker();
 	void Streaming(bool streamIt, char *strAddr, int port);
-	 
+	void Loop(bool l)
+	{
+		m_loop = l;
+	}
 
 private:
 	void ReadInput(const char *fileName);
@@ -39,15 +42,20 @@ private:
 	void adaptation_field();	
 	void StreamingWaitPCR();
 	bool InitUDPServer(char *strAddr, int port);
-
+	bool SendData(const char *buf, int size);
+	void ServerNagtation();
 
 
 private:
+	bool m_loop;
+	bool m_receiveFrom;
+	bool m_serverRunning;
 	char m_serverIpAddress[100];
 	double lastPcr;
 	bool m_streaming;
 	bit_file_c bf;
 	shared_ptr<thread> pthread;
+	shared_ptr<thread> pserverThread;	
 	bool m_tsworker;
 	TSPacket  m_tsp;
 	bool m_showPCR;

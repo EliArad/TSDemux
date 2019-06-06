@@ -105,6 +105,10 @@ class bit_file_c
         int PutChar(const int c);
 		bool CreatePIDFile(int pid, const char *fileName);
 
+		void SaveFilePointerStart();
+		void GetFilePtrIndex(uint32_t *size, uint32_t *fileStartPointer, uint32_t *fileCurPointer);
+		void GetFileData(uint32_t fileStartPointer, uint32_t size, char *buffer);
+
         /* get/put single bit */
         int GetBit(void);
         int PutBit(const int c);
@@ -151,6 +155,8 @@ class bit_file_c
 		bool m_externalBuffer;
 		uint8_t *pFileBuffer;
 		uint32_t m_fileReadIndex;
+		uint32_t m_filePtrStart;
+		uint32_t m_filePtrEnd;
 		std::ifstream::pos_type m_filePos;
         std::ifstream *m_InStream;      /* input file stream pointer */
         endian_t m_endian;              /* endianess of architecture */
