@@ -16,14 +16,13 @@ TSDemux::TSDemux() : m_streaming(false) ,
 	m_showPCR = false;	
 }
 
-void TSDemux::Streaming(bool streamIt, char *ipAddress, int port)
+void TSDemux::Streaming(bool streamIt, char *ipAddress, int port, bool server)
 {
 	m_streaming = streamIt;
-
 	if (streamIt == true)
 	{		
 		strcpy(m_serverIpAddress, ipAddress);
-		InitUDPServer(m_serverIpAddress, port);
+		InitUDPServer(m_serverIpAddress, port, server);
 	
 		
 	}
@@ -314,11 +313,14 @@ void TSDemux::Start(const char *fileName)
 			uint32_t size;
 			uint32_t fileStartPointer, fileCurPointer;
 			bf.GetFilePtrIndex(&size, &fileStartPointer, &fileCurPointer);
-			bf.GetFileData(fileStartPointer, size, sendBuf + sendIndex);
+			bf.GetFileData(fileStartPointer, size, sendBuf + 188 * sendIndex);
 			sendIndex++;
 			if (sendIndex == 7)
 			{
-				SendData(sendBuf, 1316);
+				if (m_sendAsServer == false)
+					SendData(sendBuf, 1316);
+				else 
+					SendDataTo(sendBuf, 1316);
 				sendIndex = 0;
 			}
 			//printf("%d\n", size);
@@ -381,7 +383,6 @@ int fromlen;
 void TSDemux::ServerNagtation()
 {
 	m_serverRunning = true;
-	m_receiveFrom = false;
 	char buf[110];
 	
 	while (m_serverRunning)
@@ -428,7 +429,7 @@ void TSDemux::Process()
 	}
 }
 
-bool TSDemux::SendData(const char *buf , int size)
+bool TSDemux::SendDataTo(const char *buf , int size)
 {
 	if (m_receiveFrom == false)
 		return false;
@@ -443,7 +444,19 @@ bool TSDemux::SendData(const char *buf , int size)
 
 }
 
-bool TSDemux::InitUDPServer(char *strAddr, int port)
+bool TSDemux::SendData(const char *buf, int size)
+{
+	if (::send(m_server, buf, size, 0) == SOCKET_ERROR)
+	{
+		int x = WSAGetLastError();
+		printf("error in send %d\n", x);
+		return false;
+	}
+	return true;
+
+}
+
+bool TSDemux::InitUDPServer(char *strAddr, int port, bool asServer)
 {
 
 	
@@ -451,7 +464,7 @@ bool TSDemux::InitUDPServer(char *strAddr, int port)
 	int slen, recv_len;
 	 
 	WSADATA wsa;
-
+	m_sendAsServer = asServer;
 	slen = sizeof(si_other);
 
  
@@ -460,7 +473,7 @@ bool TSDemux::InitUDPServer(char *strAddr, int port)
 		return false;
 	}
  
-	//Create a socket
+	
 	if ((m_server = ::socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET)
 	{
 		return false;
@@ -472,14 +485,23 @@ bool TSDemux::InitUDPServer(char *strAddr, int port)
 	server.sin_addr.s_addr = ip;
 	server.sin_port = htons(port);
 
-	//Bind
-	if (::bind(m_server, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+	if (asServer == true)
 	{
-		return false;
+		//Bind
+		if (::bind(m_server, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+		{
+			return false;
+		}
+		pserverThread = std::make_shared<std::thread>(std::bind(&TSDemux::ServerNagtation, this));
 	}
-
-	pserverThread = std::make_shared<std::thread>(std::bind(&TSDemux::ServerNagtation, this));
-
+	else
+	{
+		if (::connect(m_server, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+		{
+			return false;
+		}
+	}
+	
 	return true;
 }
 

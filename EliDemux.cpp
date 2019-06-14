@@ -36,11 +36,12 @@ int main()
 	//t.CreatePIDFile(258, "c:\\klv.bin");
 	//t.CreatePIDFile(256, "c:\\video.h264");
 	t.PrintConfig(true);
-	t.Streaming(true, (char *)"127.0.0.1", 6000);
+	t.Streaming(true, (char *)"10.0.0.10", 6000, false);
 	t.Loop(true);
 
 #if 1 // working from file 
-	t.Start("d:\\truck.ts");
+	//t.Start("d:\\truck.ts");
+	t.Start("d:\\long_clock.ts");
 #endif 
 
 #if 0  // working from external buffer 

@@ -30,7 +30,7 @@ public:
 	void InitTSWorker(int packets, uint32_t fifoSize);
 	void WaitWorker();
 	void StopWorker();
-	void Streaming(bool streamIt, char *strAddr, int port);
+	void Streaming(bool streamIt, char *strAddr, int port, bool server);
 	void Loop(bool l)
 	{
 		m_loop = l;
@@ -41,8 +41,9 @@ private:
 	int transport_packet();
 	void adaptation_field();	
 	void StreamingWaitPCR();
-	bool InitUDPServer(char *strAddr, int port);
+	bool InitUDPServer(char *strAddr, int port, bool server);
 	bool SendData(const char *buf, int size);
+	bool SendDataTo(const char *buf, int size);
 	void ServerNagtation();
 
 
@@ -53,6 +54,7 @@ private:
 	char m_serverIpAddress[100];
 	double lastPcr;
 	bool m_streaming;
+	bool m_sendAsServer;
 	bit_file_c bf;
 	shared_ptr<thread> pthread;
 	shared_ptr<thread> pserverThread;	
