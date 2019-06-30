@@ -1,14 +1,25 @@
 #pragma once
 #include "bitfile.h"
-#include <iostream>
-#include <fstream>
 #include <cstring>
 #include <fstream>
 #include "TSPacket.h"
+#include <iostream>
 #include "fifo.h"
 #include <thread>
 #include <memory>
-using namespace std;
+#include <chrono>
+#include <stdio.h>
+#include <sys\timeb.h>
+#include <map>
+#include <vector>
+#include <bitset>
+#include <cstring>
+#include <cinttypes>
+#include <cstdint>
+#include <climits>
+#include <algorithm>
+
+
 
 #define SYNC_BYTE 0x47
 
@@ -48,7 +59,29 @@ private:
 	bool PES_packet();
 	void pack_header();
 	void program_association_section();
-	void TS_program_map_section();
+	bool TS_program_map_section();
+	void video_stream_descriptor();
+	void audio_stream_descriptor();
+
+
+
+	void smoothing_buffer_descriptor();
+	void maximum_bitrate_descriptor();
+	void copyright_descriptor();
+	void ibp_descriptor();
+	void STD_descriptor();
+	void multiplex_buffer_utilization_descriptor();
+	void system_clock_descriptor();
+	void ISO_639_language_descriptor();
+	void CA_descriptor();
+	void video_window_descriptor();
+	void target_background_grid_descriptor();
+	void data_stream_alignment_descriptor();
+	void registration_descriptor();
+	void private_data_indicator_descriptor();
+	void hierarchy_descriptor();
+	STREAM_TYPE get_stream_type(uint8_t pes_type);
+	uint32_t crc32(const uint8_t* data, size_t len);
 
 private:
 	bool m_loop;
@@ -59,13 +92,18 @@ private:
 	bool m_streaming;
 	bool m_sendAsServer;
 	bit_file_c bf;
-	shared_ptr<thread> pthread;
-	shared_ptr<thread> pserverThread;	
+	std::shared_ptr<std::thread> pthread;
+	std::shared_ptr<std::thread> pserverThread;
 	bool m_tsworker;
 	TSPacket  m_tsp;
 	PESPacket pesPacket;
 	bool m_showPCR;
 	SOCKET m_server;
 	CFifo fifo;
+	std::map<uint8_t, std::string> m_stream_types;
+	std::vector<uint8_t> m_streams;
+	std::bitset<0x2000> m_video_elementary_PIDs;
+	std::bitset<0x2000> m_audio_elementary_PIDs;
+	std::bitset<0x2000> m_klv_elementary_PIDs;
 };
 

@@ -2,12 +2,11 @@
 //
 
 #include "pch.h"
-#include <iostream>
 #include "TSDemux.h"
 
 // the ts pdf https://ecee.colorado.edu/~ecen5653/ecen5653/papers/iso13818-1.pdf
 std::ifstream *m_InStream;
-ifstream::pos_type pos;
+std::ifstream::pos_type pos;
 TSDemux t;
 uint8_t *pFileBuffer; 
 
@@ -40,8 +39,8 @@ int main()
 	t.Loop(true);
 
 #if 1 // working from file 
-	//t.Start("d:\\truck.ts");
-	t.Start("D:\\tempBauotechDVRStorage\\2019_06_29_10_55_41\\2019_06_29_10_55_41\\2019_06_29_10_55_41_dvrsink_00000.ts");
+	t.Start("d:\\truck.ts");
+	//t.Start("D:\\tempBauotechDVRStorage\\2019_06_29_10_55_41\\2019_06_29_10_55_41\\2019_06_29_10_55_41_dvrsink_00000.ts");
 	//t.Start("d:\\long_clock.ts");
 #endif 
 
