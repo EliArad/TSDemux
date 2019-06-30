@@ -1,0 +1,17 @@
+﻿  stdafx.cpp
+  bitfile.cpp
+d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\bitfile.cpp(190): warning C4244: '=': conversion from 'std::streamoff' to 'long', possible loss of data
+d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\bitfile.cpp(203): warning C4244: 'initializing': conversion from 'std::streamsize' to 'int', possible loss of data
+d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\bitfile.cpp(370): warning C4101: 'tmp': unreferenced local variable
+  DemuxFileDurationApi.cpp
+  dllmain.cpp
+  fifo.cpp
+d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\fifo.cpp(43): warning C4018: '>': signed/unsigned mismatch
+  TSDemux.cpp
+d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\tsdemux.cpp(175): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'uint64_t'
+  d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\tsdemux.cpp(175): note: consider using '%lld' in the format string
+  d:\projects\tsdemux\elidemux\elidemux\demuxfileduration\demuxfiledurationapi\tsdemux.cpp(175): note: consider using '%I64d' in the format string
+  Generating Code...
+C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\Common7\IDE\VC\VCTargets\Microsoft.CppBuild.targets(1216,5): warning MSB8012: TargetPath(D:\projects\TSDemux\EliDemux\Debug\DemuxFileDurationApi.dll) does not match the Linker's OutputFile property value (C:\Program Files\Bauotech\Dll\DemuxFileDurationApi.dll). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
+     Creating library D:\projects\TSDemux\EliDemux\Debug\DemuxFileDurationApi.lib and object D:\projects\TSDemux\EliDemux\Debug\DemuxFileDurationApi.exp
+  DemuxFileDurationApi.vcxproj -> D:\projects\TSDemux\EliDemux\Debug\DemuxFileDurationApi.dll

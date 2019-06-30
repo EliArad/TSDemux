@@ -33,15 +33,16 @@ int main()
     std::cout << "Hello World!\n"; 
 
 	
-	//t.CreatePIDFile(258, "c:\\klv.bin");
+	t.CreatePIDFile(258, "c:\\klv.bin");
 	//t.CreatePIDFile(256, "c:\\video.h264");
 	t.PrintConfig(true);
-	t.Streaming(true, (char *)"10.0.0.10", 6000, false);
+	//t.Streaming(true, (char *)"10.0.0.10", 6000, false);
 	t.Loop(true);
 
 #if 1 // working from file 
 	//t.Start("d:\\truck.ts");
-	t.Start("d:\\long_clock.ts");
+	t.Start("D:\\tempBauotechDVRStorage\\2019_06_29_10_55_41\\2019_06_29_10_55_41\\2019_06_29_10_55_41_dvrsink_00000.ts");
+	//t.Start("d:\\long_clock.ts");
 #endif 
 
 #if 0  // working from external buffer 

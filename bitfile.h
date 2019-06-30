@@ -88,12 +88,12 @@ typedef enum
 class bit_file_c
 {
 	#define MAX_FILES 10000
-
+	#define MAX_BIT_COUNTER 10
     public:
         bit_file_c();
         virtual ~bit_file_c(void);
 		int m_totalBitCount;
-		int m_BitCounter[5];
+		int m_BitCounter[MAX_BIT_COUNTER];
         /* open/close bit file */
         void Open(const char *fileName);		
         void Close(void);
@@ -129,6 +129,7 @@ class bit_file_c
             const size_t size);
 		bool MoveAhead(uint8_t size);
 		bool GetTSBuffer(uint8_t *buffer, int size);
+		bool CheckBits(uint32_t *value, int num);
         /* status */
         bool eof(void);
         bool good(int pid_index);

@@ -86,6 +86,313 @@ void TSDemux::ReadInput(const char *fileName)
 
 }
 
+void TSDemux::TS_program_map_section() 
+{
+	int N = 0;
+	int N1 = 0;
+	int N2 = 0;
+	uint8_t temp;
+	bf.GetBits(&temp, 8);
+	bf.ResetBitCount(9);
+	bf.GetBits(&m_tsp.pmt.table_id, 8);
+	bf.GetBits(&m_tsp.pmt.section_syntax_indicator, 1);
+	bf.GetBits(&temp, 1); //'0' 1 bslbf
+	bf.GetBits(&m_tsp.pmt.reserved, 2);
+	bf.GetBits(&m_tsp.pmt.section_length, 12);
+	bf.GetBits(&m_tsp.pmt.program_number, 16);
+	bf.GetBits(&m_tsp.pmt.reserved, 2);
+	bf.GetBits(&m_tsp.pmt.version_number, 5);
+	bf.GetBits(&m_tsp.pmt.current_next_indicator, 1);
+	bf.GetBits(&m_tsp.pmt.section_number, 8);
+	bf.GetBits(&m_tsp.pmt.last_section_number, 8);
+	bf.GetBits(&m_tsp.pmt.reserved, 3);
+	bf.GetBits(&m_tsp.pmt.PCR_PID, 13);
+	bf.GetBits(&m_tsp.pmt.reserved, 4);
+	bf.GetBits(&m_tsp.pmt.program_info_length, 12);
+	int x = bf.GetBitCounter(9);
+	N = m_tsp.pmt.section_length - x / 8;
+	for (int i = 0; i < N; i++) 
+	{
+		//descriptor()
+	}
+	for (int i = 0; i < N1; i++)
+	{
+		bf.GetBits(&m_tsp.pmt.stream_type[i], 8);
+		bf.GetBits(&m_tsp.pmt.reserved, 3);
+		bf.GetBits(&m_tsp.pmt.elementary_PID[i], 13);
+		bf.GetBits(&m_tsp.pmt.reserved, 4);
+		bf.GetBits(&m_tsp.pmt.ES_info_length[i], 12);
+		for (int i = 0; i < N2; i++) 
+		{
+			//descriptor();
+		}
+	}
+	bf.GetBits(&m_tsp.pmt.CRC_32, 32);
+	
+}
+
+void TSDemux::program_association_section()
+{
+	//printf("PAT\n");
+	int N = 0;
+	uint8_t temp;	
+	bf.GetBits(&temp, 8);	// I dont know why this byte is here!!!!
+	bf.ResetBitCount(9);
+	bf.GetBits(&m_tsp.pat.table_id, 8);
+	bf.GetBits(&m_tsp.pat.section_syntax_indicator, 1);
+	bf.GetBits(&temp, 1); //'0' 1 bslbf
+	bf.GetBits(&m_tsp.pat.reserved, 2);
+	bf.GetBits(&m_tsp.pat.section_length , 12);
+	bf.GetBits(&m_tsp.pat.transport_stream_id, 16);	 
+	bf.GetBits(&m_tsp.pat.reserved, 2);
+	bf.GetBits(&m_tsp.pat.version_number, 5);
+	bf.GetBits(&m_tsp.pat.current_next_indicator, 1);
+	bf.GetBits(&m_tsp.pat.section_number , 8);
+	bf.GetBits(&m_tsp.pat.last_section_number, 8);
+	int x = bf.GetBitCounter(9) + 32;
+	N = m_tsp.pat.section_length - x / 8;
+	for (int i = 0; i < N; i++) 
+	{
+		bf.GetBits(&m_tsp.pat.program_number[i], 16);
+		bf.GetBits(&m_tsp.pat.reserved, 3);
+		if (m_tsp.pat.program_number[i] == 0) 
+		{
+			bf.GetBits(&m_tsp.pat.network_PID[i], 13);
+		}
+		else 
+		{
+			bf.GetBits(&m_tsp.pat.program_map_PID[i], 13);
+			//printf("PMT PID %d\n" , m_tsp.pat.program_map_PID[i]);
+		}		 
+	}
+	bf.GetBits(&m_tsp.pat.CRC_32, 32);
+
+	N = (188 *8 - (bf.GetBitCounter(9) + 32 + 8)) / 8;
+	for (int i = 0; i < N; i++)
+		bf.GetBits(&temp, 8);
+
+}
+
+bool TSDemux::PES_packet()
+{
+
+	int N1 = 0;
+	int N2 = 0;
+	uint8_t temp;
+	bf.CheckBits(&m_tsp.pesPacket.packet_start_code_prefix, 24);
+	if (m_tsp.pesPacket.packet_start_code_prefix != 1)
+		return false;
+	bf.GetBits(&m_tsp.pesPacket.packet_start_code_prefix, 24);
+	bf.GetBits(&m_tsp.pesPacket.stream_id, 8);
+	bf.GetBits(&m_tsp.pesPacket.PES_packet_length, 16);
+	if (m_tsp.pesPacket.stream_id != program_stream_map
+		&& m_tsp.pesPacket.stream_id != padding_stream
+		&& m_tsp.pesPacket.stream_id != private_stream_2
+		&& m_tsp.pesPacket.stream_id != ECM_stream
+		&& m_tsp.pesPacket.stream_id != EMM_stream
+		&& m_tsp.pesPacket.stream_id != program_stream_directory
+		&& m_tsp.pesPacket.stream_id != DSMCC_stream
+		&& m_tsp.pesPacket.stream_id != ITU_T_Rec_H_222_1_type_E_Stream)
+	{
+		bf.GetBits(&temp, 2);
+		if (temp != 0x2)
+		{
+			printf("error in pes packect - expected 0x2 here\n");
+		}
+
+		bf.GetBits(&m_tsp.pesPacket.PES_scrambling_control, 2);
+		bf.GetBits(&m_tsp.pesPacket.PES_priority, 1);
+		bf.GetBits(&m_tsp.pesPacket.data_alignment_indicator, 1);
+		bf.GetBits(&m_tsp.pesPacket.copyright, 1);
+		bf.GetBits(&m_tsp.pesPacket.original_or_copy, 1);
+		bf.GetBits(&m_tsp.pesPacket.PTS_DTS_flags, 2);
+		bf.GetBits(&m_tsp.pesPacket.ESCR_flag, 1);
+		bf.GetBits(&m_tsp.pesPacket.ES_rate_flag, 1);
+		bf.GetBits(&m_tsp.pesPacket.DSM_trick_mode_flag, 1);
+		bf.GetBits(&m_tsp.pesPacket.additional_copy_info_flag, 1);
+		bf.GetBits(&m_tsp.pesPacket.PES_CRC_flag, 1);
+		bf.GetBits(&m_tsp.pesPacket.PES_extension_flag, 1);
+		bf.GetBits(&m_tsp.pesPacket.PES_header_data_length, 8);
+		if (m_tsp.pesPacket.PTS_DTS_flags == 0x2)
+		{
+			bf.GetBits(&temp, 4);
+			if (temp != 0x2)
+			{
+				printf("error in pes packect - expected 0x2 here\n");
+			}
+
+			bf.GetBits(&m_tsp.pesPacket.PTS2, 3);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.PTS1, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.PTS0, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+		}
+
+		if (m_tsp.pesPacket.PTS_DTS_flags == 0x3)
+		{
+			bf.GetBits(&temp, 4);
+			if (temp != 0x3)
+			{
+				printf("error in pes packect - expected 0x3 here\n");
+			}
+
+			bf.GetBits(&m_tsp.pesPacket.PTS2, 3);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.PTS1, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.PTS0, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&temp, 4);
+			if (temp != 0x1)
+			{
+				printf("error in pes packect - expected 0x3 here\n");
+			}
+
+			bf.GetBits(&m_tsp.pesPacket.DTS2, 3);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.DTS1, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.DTS0, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+		}
+		if (m_tsp.pesPacket.ESCR_flag == '1')
+		{
+			bf.GetBits(&m_tsp.pesPacket.reserved, 2);
+			bf.GetBits(&m_tsp.pesPacket.ESCR_base2, 3);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.ESCR_base1, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.ESCR_base0, 15);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.ESCR_extension, 9);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+		}
+		if (m_tsp.pesPacket.ES_rate_flag == 1)
+		{
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.ES_rate, 22);
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+		}
+		if (m_tsp.pesPacket.DSM_trick_mode_flag == 1) {
+			bf.GetBits(&m_tsp.pesPacket.trick_mode_control, 3);
+			if (m_tsp.pesPacket.trick_mode_control == fast_forward) {
+				bf.GetBits(&m_tsp.pesPacket.field_id, 2);
+				bf.GetBits(&m_tsp.pesPacket.intra_slice_refresh, 1);
+				bf.GetBits(&m_tsp.pesPacket.frequency_truncation, 2);
+			}
+			else if (m_tsp.pesPacket.trick_mode_control == slow_motion) {
+				bf.GetBits(&m_tsp.pesPacket.rep_cntrl, 5);
+			}
+			else if (m_tsp.pesPacket.trick_mode_control == freeze_frame) {
+				bf.GetBits(&m_tsp.pesPacket.field_id, 2);
+				bf.GetBits(&m_tsp.pesPacket.reserved, 3);
+			}
+			else if (m_tsp.pesPacket.trick_mode_control == fast_reverse)
+			{
+				bf.GetBits(&m_tsp.pesPacket.field_id, 2);
+				bf.GetBits(&m_tsp.pesPacket.intra_slice_refresh, 1);
+				bf.GetBits(&m_tsp.pesPacket.frequency_truncation, 2);
+			}
+			else if (m_tsp.pesPacket.trick_mode_control == slow_reverse)
+			{
+				bf.GetBits(&m_tsp.pesPacket.rep_cntrl, 5);
+			}
+			else
+				bf.GetBits(&m_tsp.pesPacket.reserved, 5);
+		}
+		if (m_tsp.pesPacket.additional_copy_info_flag == 1)
+		{
+			bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+			bf.GetBits(&m_tsp.pesPacket.additional_copy_info, 7);
+		}
+		if (m_tsp.pesPacket.PES_CRC_flag == 1)
+		{
+			bf.GetBits(&m_tsp.pesPacket.previous_PES_packet_CRC, 16);
+		}
+		if (m_tsp.pesPacket.PES_extension_flag == 1)
+		{
+			bf.GetBits(&m_tsp.pesPacket.PES_private_data_flag, 1);
+			bf.GetBits(&m_tsp.pesPacket.pack_header_field_flag, 1);
+			bf.GetBits(&m_tsp.pesPacket.program_packet_sequence_counter_flag, 1);
+			bf.GetBits(&m_tsp.pesPacket.P_STD_buffer_flag, 1);
+			bf.GetBits(&m_tsp.pesPacket.reserved, 3);
+			bf.GetBits(&m_tsp.pesPacket.PES_extension_flag_2, 1);
+			if (m_tsp.pesPacket.PES_private_data_flag == 1)
+			{
+				throw ("not supported here");
+			}
+			if (m_tsp.pesPacket.pack_header_field_flag == '1')
+			{
+				bf.GetBits(&m_tsp.pesPacket.pack_field_length, 8);
+				throw ("no supported");
+				pack_header();
+			}
+			if (m_tsp.pesPacket.program_packet_sequence_counter_flag == 1) 
+			{
+				bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+				bf.GetBits(&m_tsp.pesPacket.program_packet_sequence_counter, 7);
+				bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+				bf.GetBits(&m_tsp.pesPacket.MPEG1_MPEG2_identifier, 1);
+				bf.GetBits(&m_tsp.pesPacket.original_stuff_length, 6);
+			}
+			if (m_tsp.pesPacket.P_STD_buffer_flag == 1)
+			{
+				bf.GetBits(&temp, 2);
+				if (temp != 0x1)
+				{
+					printf("error here 414334");
+				}
+				bf.GetBits(&m_tsp.pesPacket.P_STD_buffer_scale, 1);
+				bf.GetBits(&m_tsp.pesPacket.P_STD_buffer_size, 13);
+			}
+			if (m_tsp.pesPacket.PES_extension_flag_2 == 1) {
+				bf.GetBits(&m_tsp.pesPacket.marker_bit, 1);
+				bf.GetBits(&m_tsp.pesPacket.PES_extension_field_length, 7);
+				for (int i = 0; i < m_tsp.pesPacket.PES_extension_field_length; i++)
+				{
+					bf.GetBits(&m_tsp.pesPacket.reserved, 8);
+				}
+			}
+		}
+		for (int i = 0; i < N1; i++) 
+		{
+			bf.GetBits(&m_tsp.pesPacket.stuffing_byte, 8);
+		}
+		for (int i = 0; i < N2; i++) 
+		{
+			bf.GetBits(&m_tsp.pesPacket.PES_packet_data_byte, 8);
+		}
+	}
+	else if (m_tsp.pesPacket.stream_id == program_stream_map
+		|| m_tsp.pesPacket.stream_id == private_stream_2
+		|| m_tsp.pesPacket.stream_id == ECM_stream
+		|| m_tsp.pesPacket.stream_id == EMM_stream
+		|| m_tsp.pesPacket.stream_id == program_stream_directory
+		|| m_tsp.pesPacket.stream_id == DSMCC_stream
+		|| m_tsp.pesPacket.stream_id == ITU_T_Rec_H_222_1_type_E_Stream)
+	{
+		for (int i = 0; i < m_tsp.pesPacket.PES_packet_length; i++)
+		{
+			//PES_packet_data_byte 8 bslbf
+		}
+	}
+	else if (m_tsp.pesPacket.stream_id == padding_stream)
+	{
+		for (int i = 0; i < m_tsp.pesPacket.PES_packet_length; i++)
+		{
+			bf.GetBits(&m_tsp.pesPacket.padding_byte, 8);
+		}
+	}
+}
+
+
+void TSDemux::pack_header()
+{
+
+}
+
+
 void TSDemux::adaptation_field() 
 {
 	int N = 0;
@@ -202,6 +509,22 @@ int TSDemux::transport_packet()
 	uint8_t buffer[188];
 	if (m_tsp.ts.adaptation_field_control == 1 || m_tsp.ts.adaptation_field_control == 3)
 	{
+		if (m_tsp.ts.PID == 0)
+		{
+			program_association_section();
+			return 1;
+		} 
+		for (int i = 0; i < MAX_PMTs; i++)
+		{
+			if (m_tsp.ts.PID == m_tsp.pat.program_map_PID[i])
+			{
+				//TS_program_map_section();
+				bf.MoveAhead(N);
+				return 1;
+			}
+		}
+	 
+		PES_packet();
 		if (bf.GetTSBuffer(buffer, N) == false)
 		{
 			printf("EOF\n");

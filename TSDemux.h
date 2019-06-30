@@ -45,7 +45,10 @@ private:
 	bool SendData(const char *buf, int size);
 	bool SendDataTo(const char *buf, int size);
 	void ServerNagtation();
-
+	bool PES_packet();
+	void pack_header();
+	void program_association_section();
+	void TS_program_map_section();
 
 private:
 	bool m_loop;
@@ -60,6 +63,7 @@ private:
 	shared_ptr<thread> pserverThread;	
 	bool m_tsworker;
 	TSPacket  m_tsp;
+	PESPacket pesPacket;
 	bool m_showPCR;
 	SOCKET m_server;
 	CFifo fifo;

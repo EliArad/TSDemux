@@ -438,6 +438,27 @@ int bit_file_c::_GetBit(void)
 	return (returnValue & 0x01);
 }
 
+bool bit_file_c::CheckBits(uint32_t *value , int num)
+{
+ 
+	if (m_InStream == NULL)
+	{
+		return false;
+	}
+
+	if (m_BitCount == 0)
+	{
+		/* buffer is empty, read another character */
+		uint32_t A = pFileBuffer[m_fileReadIndex];
+		uint32_t B = pFileBuffer[m_fileReadIndex + 1];
+		uint32_t C = pFileBuffer[m_fileReadIndex + 2];		 
+		*value = (A << 16) | (B << 8) | C;
+		return true;
+	}
+	throw ("not supported yet");
+	return true;
+}
+
 int bit_file_c::CheckBit(void)
 {
 	int returnValue;
@@ -556,9 +577,22 @@ int bit_file_c::GetBits(uint16_t *bits, const unsigned int count)
 	{
 
 		if (m_BitCount == 0)
-		{
+		{			
 			/* buffer is empty, read another character */
 			returnValue = pFileBuffer[m_fileReadIndex++];
+			if (count == 8)
+			{
+				*bits = returnValue;
+				IncBitCounter(count);
+				return count;
+			}
+			if (count == 16)
+			{
+				uint32_t returnValue1 = pFileBuffer[m_fileReadIndex++];
+				*bits = (returnValue << 8) | returnValue1;
+				IncBitCounter(count);
+				return count;
+			}
 			m_BitCount = 8;
 			m_BitBuffer = returnValue;			
 		}
@@ -594,9 +628,16 @@ int bit_file_c::GetBits(uint8_t *bits, const unsigned int count)
 		{
 			/* buffer is empty, read another character */
 			returnValue = pFileBuffer[m_fileReadIndex++];
+			if (count == 8)
+			{
+				*bits = returnValue;
+				IncBitCounter(count);
+				return count;
+			}
 			m_BitCount = 8;
 			m_BitBuffer = returnValue;			
 		}
+		
 
 		returnValue = this->_GetBit();
 		*bits |= returnValue;
@@ -706,7 +747,7 @@ int bit_file_c::GetBits(uint32_t *bits, const unsigned int count)
 void bit_file_c::IncBitCounter(int count)
 {
 	m_totalBitCount += count;
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < MAX_BIT_COUNTER; i++)
 	{
 		m_BitCounter[i] += count;
 	}
